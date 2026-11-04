@@ -1,5 +1,9 @@
 # WolfGlue
 
+>
+> ⚠️ 🚧 Proyecto en fase de diseño. (pre-pre-alpha)
+>
+
 Interfaces web para aplicaciones de escritorio en C#, sin frameworks de UI y con Native AOT.
 
 WolfGlue crea ventanas nativas en Windows, Linux y macOS y las llena con el **webview que ya trae
