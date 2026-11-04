@@ -1,0 +1,14 @@
+bin/
+obj/
+publish/
+artifacts/
+.vs/
+.idea/
+*.user
+*.suo
+.DS_Store
+
+# Binarios generados por build.sh / build.ps1
+/htaw
+/htaw.exe
+/htaW.app/
