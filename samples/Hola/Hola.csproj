@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>hola</AssemblyName>
+    <RootNamespace>Hola</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WolfGlue\WolfGlue.csproj" />
+    <!-- La web va incrustada en el ejecutable, con nombres en forma de ruta -->
+    <EmbeddedResource Include="web\**" LogicalName="web/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <Import Project="..\..\src\WolfGlue\WolfGlue.targets" />
+</Project>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <p>Escribe algo y pulsa Aceptar:</p>
+  <input id="valor" autofocus>
+  <div class="row buttons">
+    <button id="ok" class="primary">Aceptar</button>
+    <button id="cancel">Cancelar</button>
+  </div>
+  <script>
+    document.getElementById("ok").onclick = () =>
+      glue.window.close({ texto: document.getElementById("valor").value, hora: new Date().toLocaleTimeString() });
+    document.getElementById("cancel").onclick = () => glue.window.close();
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("ok").click();
+      if (e.key === "Escape") document.getElementById("cancel").click();
+    });
+  </script>
+</body>
+</html>

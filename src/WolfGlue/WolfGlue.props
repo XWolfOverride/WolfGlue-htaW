@@ -1,0 +1,7 @@
+<Project>
+  <!-- Comun a WolfGlue.csproj y WolfGlue.targets -->
+  <PropertyGroup>
+    <!-- SDK de WebView2 del que se toma el loader (lib estatica para AOT, DLL para dotnet run) -->
+    <WolfGlueWebView2Version>1.0.4314.35</WolfGlueWebView2Version>
+  </PropertyGroup>
+</Project>

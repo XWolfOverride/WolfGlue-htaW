@@ -28,10 +28,40 @@ Se inyecta antes de que cargue cualquier página (`AddScriptToExecuteOnDocumentC
 
 ```js
 const r = await glue.call("servicio.metodo", { ...params });   // Promise
-glue.on("evento", datos => { ... });                            // eventos desde C#
-glue.emit("evento", datos, { to: "*" });                        // a otras ventanas
-glue.window                                                     // id y controles básicos de la ventana
+const off = glue.on("evento", (datos, desde) => { ... });       // eventos desde C# u otras ventanas
+glue.emit("evento", datos, { to: "*" });                        // a C# (Bridge.On) y a las demás ventanas ("*") o a una (id)
+glue.platform                                                   // "windows" | "linux" | "macos"
+glue.quit(codigo)
+
+glue.window.id                                                  // "w1", "w2"…
+glue.window.close(resultado?)                                   // resultado (JSON) para quien abrió el diálogo
+glue.window.setTitle(t) / setSize(w, h) / center() / minimize() / maximize() / restore() / devtools()
+await glue.window.open("pagina.html", { width, height, title, resizable })   // → id de la ventana nueva
+await glue.window.dialog("pagina.html", { ... })                // modal; → resultado de close() o null
 ```
+
+Servicios nativos (si `GlueAppOptions.NativeServicesInWeb`, activo por defecto):
+
+```js
+await glue.dialog.open({ title, multiple, defaultPath, filters: [{ name: "Texto", patterns: ["txt", "md"] }] })
+                                                   // → string[] | null   (filtros también como ["*.txt"])
+await glue.dialog.save({ title, fileName, defaultPath, defaultExtension, filters })  // → string | null
+await glue.dialog.folder({ title, defaultPath })   // → string | null
+await glue.dialog.message("texto", { title, kind: "question", buttons: "yesNoCancel" })
+                                                   // kind: info|warning|error|question
+                                                   // buttons: ok|okCancel|yesNo|yesNoCancel → "ok"|"cancel"|"yes"|"no"
+await glue.clipboard.readText()                    // → string | null
+await glue.clipboard.writeText("…")
+await glue.screens()                               // → [{ bounds:{x,y,width,height}, workArea, scale, primary }]
+await glue.theme()                                 // → { dark, accent:"#RRGGBB", fontFamily, fontSize, highContrast }
+glue.on("glue.theme", t => …)                      // cuando cambia el tema del sistema
+await glue.shell.openUrl("https://…")              // solo http, https y mailto
+await glue.shell.open(ruta)                        // con la aplicación por defecto
+await glue.shell.reveal(ruta)                      // seleccionado en el explorador de archivos
+```
+
+Los diálogos son modales sobre la ventana que llama. Implementado en `src/WolfGlue/Resources/glue.js`; los
+métodos los registra `BuiltInServices.cs`. Sin `title`, la ventana toma el `<title>` del documento.
 
 ## Protocolo (JSON-RPC simplificado)
 
@@ -47,21 +77,34 @@ glue.window                                                     // id y controle
 ```
 
 - `id` lo genera el shim. Las promesas pendientes se guardan por `id`.
-- Los errores de C# se convierten en `Error` de JS con `code` y `message`; nunca se envían trazas de pila
-  fuera de Debug.
-- Las cancelaciones (por ejemplo al cerrar la ventana) rechazan las promesas pendientes con el código `Cancelled`.
+- Los errores de C# se convierten en `Error` de JS con `code` y `message`; nunca se envían trazas de pila.
+  Códigos: el de `GlueException`, o `MethodNotFound`, `InvalidArgument` (también JSON que no encaja con el tipo),
+  `NotFound`, `AccessDenied`, `IOError`, `Cancelled`, `Error`.
+- Si la ventana se cierra antes de responder, la respuesta no se envía (`ctx.Cancellation` queda cancelado).
+- Mensajes mal formados o de tipo desconocido se ignoran.
+- Los eventos reenviados entre ventanas llevan `from` (id de la ventana emisora); `"*"` no incluye al emisor.
 
 ## Lado C# (sin reflexión)
 
-Registro explícito con tipos conocidos para `System.Text.Json` generado:
+Registro explícito; los tipos se resuelven con los contextos de `System.Text.Json` que registra la app:
 
 ```csharp
-app.Services.Register<ListReq, ListRes>("files.list", async (req, ctx) => ...);
-window.Emit("progress", new Progress(40));
+app.Bridge.UseJson(MiJson.Default);                                        // antes de app.Run()
+app.Bridge.Register<ListReq, ListRes>("files.list", async (req, ctx) => ...);  // asíncrono
+app.Bridge.Register<string, string>("eco", s => s);                            // síncrono
+app.Bridge.Register<string>("log", (s, ctx) => ...);                           // sin resultado
+app.Bridge.On<string>("aviso", (s, ctx) => ...);                               // glue.emit desde la web
+window.Emit("progress", new Progress(40));                                     // a una ventana
+app.Emit("hora", "12:00");                                                     // a todas (desde cualquier hilo)
 ```
 
-- `ctx` lleva la ventana que hizo la llamada (para abrir diálogos modales sobre ella) y un
-  `CancellationToken` que se cancela si la ventana se cierra.
+- Tipos básicos (`string`, `bool`, `int`, `long`, `double`, `JsonElement`, `string[]`,
+  `Dictionary<string,string>`) disponibles sin registrar nada. Propiedades en camelCase.
+- Los tipos se resuelven en la primera llamada: un tipo que falte en los contextos da un error
+  claro en la respuesta (no al registrar).
+- `ctx.Window` es la ventana que hizo la llamada (para abrir diálogos modales sobre ella) y
+  `ctx.Cancellation` se cancela si la ventana se cierra.
+- Los manejadores corren en el hilo de UI y sus `await` vuelven a él.
 - **Fase posterior:** generador de código que lee `[GlueService]` / `[GlueMethod]` en una clase,
   genera el registro y produce un `.d.ts` con los tipos para el front.
 

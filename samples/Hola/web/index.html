@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Hola WolfGlue</title>
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <header>
+    <h1>Hola WolfGlue</h1>
+    <span id="hora" class="muted">--:--:--</span>
+  </header>
+
+  <section>
+    <h2>Llamadas a C#</h2>
+    <div class="row">
+      <input id="nombre" placeholder="Tu nombre">
+      <button id="saludar" class="primary">Saludar</button>
+      <button id="info">Info</button>
+      <button id="falla">Provocar error</button>
+    </div>
+    <pre id="salida">&nbsp;</pre>
+  </section>
+
+  <section>
+    <h2>Ventanas</h2>
+    <div class="row">
+      <button id="nueva">Nueva ventana</button>
+      <button id="dialogo">Dialogo modal</button>
+      <button id="avisar">Avisar a las otras ventanas</button>
+      <a href="https://example.com" target="_blank">Enlace externo</a>
+    </div>
+    <p>Esta ventana: <b id="wid"></b> · Plataforma: <b id="plat"></b></p>
+    <ul id="avisos"></ul>
+  </section>
+
+  <section>
+    <h2>Servicios nativos</h2>
+    <div class="row">
+      <button id="abrir">Abrir archivos…</button>
+      <button id="guardar">Guardar como…</button>
+      <button id="carpeta">Elegir carpeta…</button>
+      <button id="pregunta">Pregunta</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="copiar">Copiar texto</button>
+      <button id="pegar">Pegar texto</button>
+      <button id="pantallas">Pantallas</button>
+      <button id="tema">Tema</button>
+      <button id="mostrar" disabled>Mostrar en el explorador</button>
+      <span class="swatch" id="acento" title="Color de acento"></span>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

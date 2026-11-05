@@ -1,0 +1,23 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff; --fg: #1b1b1b; --muted: #666; --line: #d8d8d8; --accent: #0067c0;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #202020; --fg: #f0f0f0; --muted: #aaa; --line: #3a3a3a; --accent: #4cc2ff; }
+}
+html, body { margin: 0; background: var(--bg); color: var(--fg); }
+body { font: 14px "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; padding: 16px 20px; user-select: none; }
+header { display: flex; align-items: baseline; justify-content: space-between; }
+h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+h2 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; }
+.muted { color: var(--muted); font-variant-numeric: tabular-nums; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.buttons { margin-top: 16px; justify-content: flex-end; }
+input { font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: inherit; user-select: text; }
+button { font: inherit; padding: 5px 14px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: inherit; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+a { color: var(--accent); }
+pre { border: 1px solid var(--line); border-radius: 4px; padding: 8px; min-height: 3em; max-height: 9em; overflow: auto; white-space: pre-wrap; user-select: text; }
+.swatch { display: inline-block; width: 22px; height: 22px; border-radius: 4px; background: var(--accent); border: 1px solid var(--line); }
+button:disabled { opacity: .5; }

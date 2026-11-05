@@ -29,8 +29,8 @@ en [AGENTS.md](../AGENTS.md).
 
 ## Hechos clave (leer antes de tocar nada)
 
-- **Estado:** solo diseño. No hay código todavía; estos documentos describen lo previsto y se
-  actualizan cuando la implementación se aparte de ellos.
+- **Estado:** WolfGlue funciona en Windows (ver HOJA-DE-RUTA.md); htaW, Linux y macOS siguen en diseño.
+  Lo no implementado se marca como previsto y se actualiza cuando la implementación se aparte de ello.
 - Native AOT en todo: sin reflexión, sin `ComImport` clásico, `System.Text.Json` con
   `JsonSerializerContext`, P/Invoke con `LibraryImport`, callbacks con `[UnmanagedCallersOnly]`.
 - Sin WinForms, WPF, Avalonia ni similares. Las ventanas se crean con las APIs del sistema.

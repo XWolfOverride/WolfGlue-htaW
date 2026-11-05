@@ -14,8 +14,8 @@ El repositorio incluye **htaW**, un lanzador de aplicaciones `.htaw`: aplicacion
 hechas solo con web, con una API para archivos, diálogos, procesos y ventanas, y un estilo por
 defecto que imita el del sistema donde se ejecutan.
 
-> **Estado:** fase de diseño. Solo existe la documentación técnica en [DOC/](DOC/README.md);
-> todavía no hay código.
+> **Estado:** la biblioteca funciona en Windows (con un ejemplo en `samples/Hola`); htaW, Linux y
+> macOS están en diseño. Detalle en [DOC/](DOC/README.md).
 
 ## WolfGlue (biblioteca)
 

@@ -15,7 +15,16 @@ Repositorio con dos piezas:
 - Interfaz COM de WebView2 declarada a mano con `[GeneratedComInterface]`; `WebView2LoaderStatic.lib`
   enlazado estaticamente (un solo `.exe`).
 - Un unico entorno de webview compartido por todas las ventanas de la app.
-- Contenido servido por esquema/host propio (`https://<host>.local/`) desde recursos incrustados o zip; sin servidor HTTP local.
+- Contenido servido por host propio (`https://app.local/` por defecto, `GlueAppOptions.Host`) desde recursos
+  incrustados, carpeta o zip (`IContentProvider`); sin servidor HTTP local.
+- `Main` con `[STAThread]`; un solo hilo de UI; `SynchronizationContext` propio para que los `await` vuelvan a el.
+- Tamanos de ventana en unidades logicas y referidos al area de contenido (no al marco).
+- Tipos JSON del bridge: la app registra su `JsonSerializerContext` con `Bridge.UseJson` (antes de `Run`);
+  los tipos se resuelven en la primera llamada.
+- Servicios nativos en `app.Native` (dialogos, portapapeles, pantallas, tema, shell), usables desde cualquier hilo;
+  los dialogos se encolan en el hilo de UI (nunca dentro de un callback del webview). Se exponen a la web como
+  `glue.dialog/clipboard/screens/theme/shell` salvo `NativeServicesInWeb = false` (htaW lo desactivara y pondra
+  sus versiones con permisos).
 - Comunicacion web <-> C#: JSON-RPC sobre el canal de mensajes del webview + `fetch` al host propio para binarios.
 - WolfGlue se consume **solo como `ProjectReference`** (submodulo git en otros repos); no se publica en NuGet.
   El consumidor importa `WolfGlue.targets` con una linea.
@@ -25,8 +34,20 @@ Repositorio con dos piezas:
 - htaW: un proceso por app; origen `https://<id>.htaw.local/` para aislar almacenamiento.
 
 ## Estado
-- Solo documentacion de diseno. **No hay codigo ni proyectos C# todavia.**
+- Fase 1 (WolfGlue en Windows) completa: `src/WolfGlue` (API, bridge, contenido, servicios nativos `app.Native`,
+  backend Win32 + WebView2), `samples/Hola` (ejemplo) y `tests/WolfGlue.Tests` (xUnit, 48 pruebas, pasan).
+- Probado a mano en Windows 11, con JIT y con AOT (un `.exe` de ~3,9 MB): llamadas sincronas/asincronas, errores con
+  codigo, eventos desde otro hilo, varias ventanas, avisos entre ventanas, dialogo modal con resultado, cierre limpio,
+  dialogos de abrir (multiple), guardar y carpeta, mensaje con botones, portapapeles, pantallas, tema y mostrar en
+  el explorador.
+- Sin probar: cambio de DPI entre monitores, cambio de tema en caliente (evento `glue.theme`), enlace externo.
+- Limitacion conocida: el mensaje nativo (`MessageBoxW`) sale en modo claro aunque el sistema este en oscuro.
+- htaW, macOS y Linux: sin empezar. `run.cmd`/`run.sh`/`publish.cmd` lanzan/publican el ejemplo hasta que exista htaW.
 - Repositorio git sin remoto y sin commits.
+
+## Compilar
+`dotnet build`, `dotnet test`, `run.cmd` (ejemplo con `dotnet run`), `publish.cmd` (ejemplo AOT -> `hola.exe` en la raiz).
+Detalle en [DOC/COMPILACION-Y-PRUEBAS.md](DOC/COMPILACION-Y-PRUEBAS.md).
 
 ## Documentacion
 Indice y hechos clave en [DOC/README.md](DOC/README.md). Leer solo el documento que haga falta:

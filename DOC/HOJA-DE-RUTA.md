@@ -3,13 +3,19 @@
 Orden previsto. Cada fase termina con algo que se puede ejecutar y probar.
 
 ## Fase 1: WolfGlue en Windows
-1. Estructura del repo, solución, proyectos y pruebas vacías; `WolfGlue.targets`.
-2. `GlueApp` + `GlueWindow` con `user32` (bucle, `Invoke`, DPI PerMonitorV2, cierre).
-3. WebView2 por COM generado y loader estático; un solo entorno compartido.
-4. Host propio con recursos incrustados; shim JS; bridge JSON-RPC y eventos.
-5. Varias ventanas, `window.open`, ventanas con dueño y modales.
-6. Servicios nativos: diálogos, shell, tema (barra de título oscura), portapapeles, pantallas.
-7. Ejemplo C# en `samples/`.
+1. ✅ Estructura del repo, solución, proyectos y pruebas; `WolfGlue.targets`.
+2. ✅ `GlueApp` + `GlueWindow` con `user32` (bucle, `Invoke`, DPI PerMonitorV2, cierre).
+3. ✅ WebView2 por COM generado y loader estático; un solo entorno compartido.
+4. ✅ Host propio con recursos incrustados; shim JS; bridge JSON-RPC y eventos.
+5. ✅ Varias ventanas, `window.open`, ventanas con dueño y modales.
+6. ✅ Servicios nativos (`app.Native` y `glue.*`): diálogos de abrir/guardar/carpeta, mensajes, portapapeles
+   (texto), pantallas, tema con evento de cambio, shell (abrir URL, abrir archivo, mostrar en el explorador).
+7. ✅ Ejemplo C# en `samples/Hola`.
+
+Pendiente de probar a mano: mover entre monitores con distinta escala, cambiar el tema con la app abierta,
+enlace externo. Por decidir: desactivar las teclas de navegador (F5, Ctrl+P…) con `ICoreWebView2Settings3`;
+mensajes con `TaskDialogIndirect` en vez de `MessageBoxW` (botones con texto propio; el modo oscuro tampoco
+lo soporta); imagen en el portapapeles.
 
 ## Fase 2: htaW en Windows
 1. Detección de formato, manifiesto, proveedores HTML suelto y zip.

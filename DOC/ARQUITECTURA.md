@@ -10,7 +10,7 @@ WolfGlue/
 │  ├─ WolfGlue.Generators/      generador de código del bridge y de .d.ts (fase posterior)
 │  └─ htaW/                     ejecutable (WinExe, Native AOT)
 │     └─ assets/                htaw.css, shim JS, htaw.d.ts (recursos incrustados)
-├─ samples/                     ejemplo C# con varias ventanas + aplicaciones .htaw de ejemplo
+├─ samples/Hola/                ejemplo C# (llamadas, eventos, varias ventanas, modal); .htaw de ejemplo mas adelante
 ├─ tests/
 │  ├─ WolfGlue.Tests/           xUnit
 │  └─ htaW.Tests/               xUnit
@@ -90,3 +90,15 @@ El backend se elige en tiempo de ejecución con `OperatingSystem.IsWindows()`, `
 | `Clipboard` | texto (imagen más adelante) |
 
 Los diálogos reciben la ventana dueña para mostrarse modales sobre ella.
+
+Implementación:
+- Fachada pública `WolfGlue.Native.GlueNative` (`app.Native`) en `src/WolfGlue/Native/`; contrato interno
+  `IPlatformServices` en `Platform/IPlatform.cs`; Windows en `Platform/Windows/WinServices.cs` (+ `ShellInterop.cs`
+  con `IFileOpenDialog`/`IFileSaveDialog` declaradas para AOT).
+- Los diálogos se **encolan** siempre en el hilo de UI y nunca se abren dentro de un callback del webview: el bucle
+  modal anidado dentro de un evento de WebView2 puede dar problemas de reentrada.
+- `Theme.Changed` (C#) y el evento `glue.theme` (web) se disparan una sola vez por cambio real, aunque el aviso del
+  sistema llegue a todas las ventanas.
+- Pantallas en píxeles físicos del escritorio virtual + `Scale` de cada monitor.
+- Tema en Windows: claro/oscuro y acento del registro de usuario, fuente de mensajes del sistema
+  (`SystemParametersInfoForDpi` a 96 ppp, "Segoe UI Variable Text" en Windows 11), alto contraste.

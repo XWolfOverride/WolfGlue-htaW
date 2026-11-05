@@ -1,0 +1,32 @@
+<Project>
+  <!--
+    Lo importa el proyecto de la APLICACION que usa WolfGlue (ver DOC/CONSUMO.md):
+      <Import Project="ruta\a\WolfGlue\src\WolfGlue\WolfGlue.targets" />
+    Con ProjectReference no se importa solo, y las entradas de NativeAOT tienen que estar en el proyecto que se publica.
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)WolfGlue.props" />
+
+  <PropertyGroup>
+    <WolfGlueWebView2Dir>$(NuGetPackageRoot)microsoft.web.webview2\$(WolfGlueWebView2Version)\build\native\</WolfGlueWebView2Dir>
+    <!-- Arquitectura: la del RID si hay; si no, la de la maquina (dotnet run / build sin RID) -->
+    <WolfGlueArch Condition="$(RuntimeIdentifier.EndsWith('-arm64'))">arm64</WolfGlueArch>
+    <WolfGlueArch Condition="$(RuntimeIdentifier.EndsWith('-x86'))">x86</WolfGlueArch>
+    <WolfGlueArch Condition="'$(WolfGlueArch)' == '' and '$(RuntimeIdentifier)' != ''">x64</WolfGlueArch>
+    <WolfGlueArch Condition="'$(WolfGlueArch)' == '' and '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'">arm64</WolfGlueArch>
+    <WolfGlueArch Condition="'$(WolfGlueArch)' == ''">x64</WolfGlueArch>
+    <!-- Manifiesto por defecto (PerMonitorV2, Common Controls v6) si la aplicacion no tiene uno -->
+    <ApplicationManifest Condition="'$(ApplicationManifest)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">$(MSBuildThisFileDirectory)app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <!-- Native AOT en Windows: loader de WebView2 enlazado estaticamente (un solo .exe) -->
+  <ItemGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('win'))">
+    <NativeLibrary Include="$(WolfGlueWebView2Dir)$(WolfGlueArch)\WebView2LoaderStatic.lib" />
+    <DirectPInvoke Include="WebView2Loader" />
+  </ItemGroup>
+
+  <!-- Ejecucion con JIT (dotnet run): se carga WebView2Loader.dll junto al ejecutable -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <None Include="$(WolfGlueWebView2Dir)$(WolfGlueArch)\WebView2Loader.dll" Link="WebView2Loader.dll"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" Visible="false" />
+  </ItemGroup>
+</Project>
