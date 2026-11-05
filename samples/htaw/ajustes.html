@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Ajustes</title>
+</head>
+<body>
+  <label>Nombre: <input id="valor" autofocus></label>
+  <div class="dialog-buttons">
+    <button type="submit" id="ok">Aceptar</button>
+    <button id="cancelar">Cancelar</button>
+  </div>
+  <script>
+    document.getElementById("ok").onclick = () => htaw.window.close({ nombre: document.getElementById("valor").value });
+    document.getElementById("cancelar").onclick = () => htaw.window.close();
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("ok").click();
+      if (e.key === "Escape") document.getElementById("cancelar").click();
+    });
+  </script>
+</body>
+</html>

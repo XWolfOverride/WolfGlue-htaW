@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>htaw</AssemblyName>
+    <RootNamespace>HtaW</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Version>0.1.0</Version>
+    <Product>htaW</Product>
+	<ApplicationIcon>htaW.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WolfGlue\WolfGlue.csproj" />
+    <EmbeddedResource Include="Assets\htaw.js" LogicalName="htaw.js" />
+    <EmbeddedResource Include="Assets\htaw.css" LogicalName="htaw.css" />
+    <None Include="Assets\htaw.d.ts" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="htaW.Tests" />
+  </ItemGroup>
+  <Import Project="..\WolfGlue\WolfGlue.targets" />
+</Project>

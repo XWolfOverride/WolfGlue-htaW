@@ -3,9 +3,11 @@
     <Project Path="samples/Hola/Hola.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/htaW/htaW.csproj" />
     <Project Path="src/WolfGlue/WolfGlue.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/htaW.Tests/htaW.Tests.csproj" />
     <Project Path="tests/WolfGlue.Tests/WolfGlue.Tests.csproj" />
   </Folder>
 </Solution>

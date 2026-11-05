@@ -13,7 +13,7 @@ internal static unsafe partial class Win32
 
     public const uint WM_DESTROY = 0x0002, WM_MOVE = 0x0003, WM_SIZE = 0x0005, WM_ACTIVATE = 0x0006,
         WM_SETFOCUS = 0x0007, WM_CLOSE = 0x0010, WM_GETMINMAXINFO = 0x0024, WM_SETTINGCHANGE = 0x001A,
-        WM_DPICHANGED = 0x02E0, WM_APP = 0x8000, WM_MOVING = 0x0216;
+        WM_DPICHANGED = 0x02E0, WM_APP = 0x8000, WM_MOVING = 0x0216, WM_TIMER = 0x0113;
 
     public const int SW_HIDE = 0, SW_SHOWNORMAL = 1, SW_SHOWMINIMIZED = 2, SW_SHOWMAXIMIZED = 3, SW_RESTORE = 9;
     public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
@@ -160,6 +160,13 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool IsZoomed(nint hwnd);
 
+    [LibraryImport("user32.dll")]
+    public static partial nuint SetTimer(nint hwnd, nint id, uint elapseMs, nint timerProc);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool KillTimer(nint hwnd, nint id);
+
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
     public static partial int MessageBoxW(nint hwnd, string text, string caption, uint type);
 
@@ -292,6 +299,7 @@ internal static unsafe partial class Win32
     // ------------------------------------------------------------- MessageBox
     public const uint MB_OKCANCEL = 0x1, MB_YESNOCANCEL = 0x3, MB_YESNO = 0x4,
         MB_ICONQUESTION = 0x20, MB_ICONWARNING = 0x30, MB_ICONINFORMATION = 0x40, MB_TASKMODAL = 0x2000;
+    public const uint MB_DEFBUTTON2 = 0x100, MB_DEFBUTTON3 = 0x200;
     public const int IDOK = 1, IDCANCEL = 2, IDYES = 6, IDNO = 7;
 
     // ------------------------------------------------------------- WebView2Loader

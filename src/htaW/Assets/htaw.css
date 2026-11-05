@@ -1,0 +1,176 @@
+/* htaW: estilo con aspecto nativo (DOC/HTAW-ESTILO.md).
+   Un HTML sin clases debe parecer ya una ventana del sistema. La hoja de la app va despues y puede
+   sobreescribir todo. Variables publicas: --htaw-*. El acento y la fuente los fija htaW con el tema real. */
+
+:root {
+  color-scheme: light dark;
+  --htaw-accent: #0067c0;
+  --htaw-accent-text: #ffffff;
+  --htaw-font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --htaw-font-size: 14px;
+  --htaw-radius: 4px;
+  --htaw-radius-large: 8px;
+
+  --htaw-bg: #f3f3f3;
+  --htaw-surface: #fbfbfb;
+  --htaw-fg: #1b1b1b;
+  --htaw-fg-muted: #5f5f5f;
+  --htaw-border: #e5e5e5;
+  --htaw-border-strong: #c4c4c4;
+  --htaw-control-bg: #fdfdfd;
+  --htaw-control-hover: #f6f6f6;
+  --htaw-control-active: #f0f0f0;
+  --htaw-selection: color-mix(in srgb, var(--htaw-accent) 18%, transparent);
+  --htaw-link: color-mix(in srgb, var(--htaw-accent) 85%, black);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --htaw-bg: #202020;
+    --htaw-surface: #2b2b2b;
+    --htaw-fg: #ffffff;
+    --htaw-fg-muted: #c5c5c5;
+    --htaw-border: #3a3a3a;
+    --htaw-border-strong: #5a5a5a;
+    --htaw-control-bg: #2d2d2d;
+    --htaw-control-hover: #323232;
+    --htaw-control-active: #272727;
+    --htaw-selection: color-mix(in srgb, var(--htaw-accent) 35%, transparent);
+    --htaw-link: color-mix(in srgb, var(--htaw-accent) 55%, white);
+  }
+}
+
+html[data-os="macos"] { --htaw-font: -apple-system, system-ui, sans-serif; --htaw-font-size: 13px; --htaw-radius: 6px; }
+html[data-os="linux"] { --htaw-font: system-ui, sans-serif; --htaw-radius: 6px; }
+
+/* ------------------------------------------------------------------ documento */
+html, body { margin: 0; background: var(--htaw-bg); color: var(--htaw-fg); }
+body {
+  font-family: var(--htaw-font);
+  font-size: var(--htaw-font-size);
+  line-height: 1.43;
+  padding: 16px;
+  box-sizing: border-box;
+  cursor: default;
+  user-select: none;          /* comportamiento de aplicacion, no de documento */
+  -webkit-font-smoothing: antialiased;
+}
+*, *::before, *::after { box-sizing: inherit; }
+::selection { background: var(--htaw-selection); }
+input, textarea, [contenteditable], pre, code, .selectable { user-select: text; cursor: auto; }
+
+h1 { font-size: 28px; font-weight: 600; margin: 0 0 12px; }
+h2 { font-size: 20px; font-weight: 600; margin: 16px 0 8px; }
+h3 { font-size: 16px; font-weight: 600; margin: 12px 0 6px; }
+p { margin: 0 0 8px; }
+a { color: var(--htaw-link); text-decoration: none; cursor: pointer; }
+a:hover { text-decoration: underline; }
+hr { border: 0; border-top: 1px solid var(--htaw-border); margin: 12px 0; }
+small, .muted { color: var(--htaw-fg-muted); }
+code, pre, kbd { font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; font-size: 0.93em; }
+pre { background: var(--htaw-surface); border: 1px solid var(--htaw-border); border-radius: var(--htaw-radius); padding: 8px 10px; overflow: auto; }
+
+:focus-visible { outline: 2px solid var(--htaw-fg); outline-offset: 1px; border-radius: var(--htaw-radius); }
+
+/* ------------------------------------------------------------------ botones */
+button, input[type="button"], input[type="submit"], input[type="reset"] {
+  font: inherit;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--htaw-border);
+  border-bottom-color: var(--htaw-border-strong);
+  border-radius: var(--htaw-radius);
+  background: var(--htaw-control-bg);
+  color: var(--htaw-fg);
+  cursor: default;
+}
+button:hover, input[type="button"]:hover, input[type="reset"]:hover { background: var(--htaw-control-hover); }
+button:active, input[type="button"]:active, input[type="reset"]:active { background: var(--htaw-control-active); color: var(--htaw-fg-muted); }
+button[type="submit"], input[type="submit"], button.default, button.primary {
+  background: var(--htaw-accent);
+  border-color: color-mix(in srgb, var(--htaw-accent) 85%, black);
+  color: var(--htaw-accent-text);
+}
+button[type="submit"]:hover, input[type="submit"]:hover, button.default:hover, button.primary:hover {
+  background: color-mix(in srgb, var(--htaw-accent) 90%, var(--htaw-bg));
+}
+button:disabled, input:disabled, select:disabled, textarea:disabled { opacity: 0.45; pointer-events: none; }
+
+/* ------------------------------------------------------------------ campos */
+input:not([type]), input[type="text"], input[type="search"], input[type="password"], input[type="email"],
+input[type="url"], input[type="number"], input[type="tel"], input[type="date"], input[type="time"],
+input[type="datetime-local"], select, textarea {
+  font: inherit;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--htaw-border);
+  border-bottom: 1px solid var(--htaw-border-strong);
+  border-radius: var(--htaw-radius);
+  background: var(--htaw-control-bg);
+  color: var(--htaw-fg);
+}
+textarea { min-height: 64px; resize: vertical; }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-bottom: 2px solid var(--htaw-accent);
+  padding-bottom: 3px;
+  background: var(--htaw-surface);
+}
+input[type="checkbox"], input[type="radio"], input[type="range"], progress, meter { accent-color: var(--htaw-accent); }
+input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; vertical-align: -4px; margin: 0 6px 0 0; }
+label { cursor: default; }
+progress { width: 100%; height: 4px; }
+
+fieldset { border: 1px solid var(--htaw-border); border-radius: var(--htaw-radius-large); padding: 8px 14px 12px; margin: 0 0 12px; }
+legend { padding: 0 6px; color: var(--htaw-fg-muted); }
+
+/* ------------------------------------------------------------------ tablas */
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 600; color: var(--htaw-fg-muted); border-bottom: 1px solid var(--htaw-border); padding: 6px 8px; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--htaw-border); }
+tbody tr:hover { background: var(--htaw-control-hover); }
+
+/* ------------------------------------------------------------------ scroll */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--htaw-fg) 35%, transparent); border: 4px solid transparent; border-radius: 6px; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { border-width: 3px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+
+/* ------------------------------------------------------------------ patrones de escritorio */
+.layout-fill { position: fixed; inset: 0; display: flex; flex-direction: column; }
+.layout-fill > main, .layout-fill > .content { flex: 1; overflow: auto; padding: 16px; }
+body:has(> .layout-fill) { padding: 0; }
+
+.toolbar { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--htaw-border); background: var(--htaw-bg); }
+.toolbar button { border-color: transparent; background: transparent; }
+.toolbar button:hover { background: var(--htaw-control-hover); border-color: var(--htaw-border); }
+.toolbar .spacer { flex: 1; }
+
+.statusbar { display: flex; gap: 16px; padding: 4px 12px; border-top: 1px solid var(--htaw-border); color: var(--htaw-fg-muted); font-size: 12px; }
+
+.sidebar { width: 240px; padding: 8px; border-right: 1px solid var(--htaw-border); overflow: auto; }
+.sidebar a, .sidebar button { display: block; width: 100%; text-align: left; padding: 8px 12px; border: 0; border-radius: var(--htaw-radius); background: transparent; color: var(--htaw-fg); }
+.sidebar a:hover, .sidebar button:hover { background: var(--htaw-control-hover); text-decoration: none; }
+.sidebar .selected { background: var(--htaw-control-hover); box-shadow: inset 3px 0 0 var(--htaw-accent); }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--htaw-border); margin-bottom: 12px; }
+.tab { padding: 8px 12px; border: 0; border-radius: var(--htaw-radius) var(--htaw-radius) 0 0; background: transparent; color: var(--htaw-fg-muted); min-height: 0; }
+.tab:hover { color: var(--htaw-fg); background: var(--htaw-control-hover); }
+.tab.selected, .tab[aria-selected="true"] { color: var(--htaw-fg); box-shadow: inset 0 -3px 0 var(--htaw-accent); }
+
+.listview { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--htaw-border); border-radius: var(--htaw-radius); background: var(--htaw-surface); overflow: auto; }
+.listview > * { padding: 6px 10px; border-radius: var(--htaw-radius); }
+.listview > *:hover { background: var(--htaw-control-hover); }
+.listview > .selected, .listview > [aria-selected="true"] { background: var(--htaw-selection); }
+
+.card { background: var(--htaw-surface); border: 1px solid var(--htaw-border); border-radius: var(--htaw-radius-large); padding: 12px 16px; margin-bottom: 8px; }
+
+/* Botones de dialogo: en el HTML, el principal primero. Windows: [Aceptar][Cancelar] a la derecha;
+   macOS y GNOME invierten el orden (Cancelar a la izquierda del principal). */
+.dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.dialog-buttons > * { min-width: 96px; }
+html[data-os="macos"] .dialog-buttons, html[data-os="linux"] .dialog-buttons { flex-direction: row-reverse; justify-content: flex-start; }
+html[data-os="macos"] .dialog-buttons::before, html[data-os="linux"] .dialog-buttons::before { content: ""; flex: 1; order: 99; }
+
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.column { display: flex; flex-direction: column; gap: 8px; }

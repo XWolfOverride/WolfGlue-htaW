@@ -72,7 +72,8 @@ internal partial interface ICoreWebView2
     void NavigateToString(string html);                                                      // 3
     long add_NavigationStarting(ICoreWebView2NavigationStartingEventHandler handler);       // 4
     void _05(); void _06(); void _07(); void _08(); void _09(); void _10(); void _11();
-    void _12(); void _13(); void _14(); void _15(); void _16(); void _17(); void _18(); void _19();
+    long add_NavigationCompleted(ICoreWebView2NavigationCompletedEventHandler handler);     // 12
+    void _13(); void _14(); void _15(); void _16(); void _17(); void _18(); void _19();
     void _20(); void _21(); void _22(); void _23();
     void AddScriptToExecuteOnDocumentCreated(string javaScript,
         ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler? handler);          // 24
@@ -227,6 +228,19 @@ internal partial interface ICoreWebView2NewWindowRequestedEventHandler
 internal partial interface ICoreWebView2NavigationStartingEventHandler
 {
     [PreserveSig] int Invoke(nint sender, ICoreWebView2NavigationStartingEventArgs args);
+}
+
+[GeneratedComInterface]
+[Guid("d33a35bf-1c49-4f98-93ab-006e0533fe1c")]
+internal partial interface ICoreWebView2NavigationCompletedEventHandler
+{
+    [PreserveSig] int Invoke(nint sender, nint args);
+}
+
+[GeneratedComClass]
+internal sealed partial class NavigationCompletedHandler(Action cb) : ICoreWebView2NavigationCompletedEventHandler
+{
+    public int Invoke(nint sender, nint args) => Safe.Run(cb);
 }
 
 [GeneratedComInterface]

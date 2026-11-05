@@ -77,6 +77,24 @@ que declaran.
 
 ## Contenido web
 
-- Solo se cargan páginas del origen propio de la app. Las navegaciones externas se abren en el navegador del sistema.
+- Solo se cargan páginas del origen propio de la app. Las navegaciones externas (enlaces, `window.open`) se abren en el navegador del sistema solo si son `http`, `https` o `mailto`; el resto se descarta. Así una app sin `shell.open` no puede abrir archivos ni programas con un `file:` u otro protocolo.
 - `htaw.http` existe para que la app no tenga que salir de su origen para hablar con Internet.
 - DevTools solo con `htaw --dev`.
+
+## Estado de la implementación
+
+Implementado en `src/htaW/Security/` (`Permissions.cs`, `Trust.cs`) y `Api/HtawHost.cs`. Detalles fijados al
+implementar:
+
+- **Scripts `.bat`/`.cmd`** (Windows): `cmd.exe` los interpreta con sus propias reglas de comillas, así que un
+  argumento podría inyectar órdenes. Solo se ejecutan si el permiso ya equivale a "todos" (`*.*` o un intérprete).
+- Para `shell.exec` el nombre se busca solo en el `PATH` (no en la carpeta actual ni en la de la app).
+- La ventana de permisos es un mensaje nativo con Aceptar/Cancelar y **Cancelar por defecto**; con icono de
+  aviso si el archivo viene de fuera o si los permisos equivalen a ejecutar cualquier cosa.
+- `trust.json` guarda dos cosas: `files` (hash → permisos aceptados para ese contenido exacto) y `apps`
+  (id → unión de permisos aceptados). Las apps locales se registran en `apps` al abrirse sin preguntar, para
+  detectar después una versión que pida más.
+- Origen externo: hecho en Windows (`Zone.Identifier`); macOS y Linux, pendientes con sus backends.
+- `--dev` no pregunta, pero aplica los permisos.
+- htaW crea la `GlueApp` con `NativeServicesInWeb = false`: la web no ve `glue.dialog`, `glue.shell`… solo las
+  versiones `htaw.*` con permisos. `glue.window.*` sí está disponible (no necesita permiso).

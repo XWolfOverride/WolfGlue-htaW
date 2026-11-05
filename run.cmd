@@ -1,5 +1,5 @@
 @echo off
-rem Ejecuta el ejemplo de WolfGlue con dotnet run (doble clic). Cuando exista htaW, lanzara htaW.
+rem Ejecuta htaW con dotnet run (doble clic). Sin argumentos pide el .htaw a abrir.
 cd /d "%~dp0"
-dotnet run --project samples\Hola\Hola.csproj -- %*
+dotnet run --project src\htaW\htaW.csproj -- %*
 if errorlevel 1 pause

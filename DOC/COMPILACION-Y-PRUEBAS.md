@@ -1,7 +1,7 @@
 # Compilación y pruebas
 
-> Estado actual: WolfGlue (Windows), el ejemplo `samples/Hola` y `tests/WolfGlue.Tests` existen y compilan.
-> htaW y los scripts `build.*` aún no: lo que se refiere a ellos es lo previsto.
+> Estado actual: WolfGlue y htaW funcionan en Windows, con sus pruebas y ejemplos. `build.sh` (Linux y
+> macOS) llegará con esos backends: lo que se refiere a él es lo previsto.
 
 ## Requisitos de desarrollo
 
@@ -19,19 +19,21 @@ Native AOT no compila de un sistema a otro: cada binario se compila en su sistem
 ```
 dotnet build                                   # solución WolfGlue.slnx
 dotnet test                                    # pruebas xUnit
-dotnet run --project samples/Hola              # ejemplo
-dotnet publish samples/Hola -c Release -r win-x64   # ejemplo AOT (vswhere en el PATH)
+dotnet run --project src/htaW -- samples/htaw/hola.htaw     # htaW
+dotnet run --project src/htaW -- --dev samples/htaw/notas    # htaW en modo desarrollo
+dotnet run --project samples/Hola                           # ejemplo C# de WolfGlue
+dotnet publish src/htaW -c Release -r win-x64               # htaW AOT (vswhere en el PATH)
 ```
 
-- `run.cmd` / `run.sh`: `dotnet run` del ejemplo con doble clic (pasarán a htaW cuando exista).
-- `publish.cmd` (Windows, doble clic): solo `dotnet publish` AOT y copia de `hola.exe` a la raíz, sin
-  comprobaciones ni git (pasará a `htaw.exe`). Evita el bloqueo de la directiva de ejecución al lanzar
-  `build.ps1` como archivo.
-- Hay que ejecutar en Windows con el runtime de WebView2. El ejemplo con AOT ocupa ~3,3 MB en un único `.exe`.
-- `build.ps1` / `build.sh`: comprueban requisitos (sin instalar nada), obtienen el código, ejecutan
-  `dotnet publish src/htaW/htaW.csproj -c Release -r <RID>` con AOT, copian el binario a la raíz y
-  explican cómo instalarlo en el `PATH` y cómo asociar `.htaw`. En macOS montan `htaW.app`.
-  Se basan en las plantillas habituales (un solo ejecutable). Para forks: `WOLFGLUE_REPO_URL`.
+- `run.cmd` / `run.sh`: `dotnet run` de htaW con doble clic (sin argumentos pide el `.htaw`).
+- `publish.cmd` (Windows, doble clic): solo `dotnet publish` AOT y copia de `htaw.exe` a la raíz, sin
+  comprobaciones ni git. Evita el bloqueo de la directiva de ejecución al lanzar `build.ps1` como archivo.
+- `build.ps1` (hecho): comprueba git, SDK de .NET 10 y Build Tools de C++ (sin instalar nada) y avisa si falta el
+  runtime de WebView2; usa el repo actual o clona/actualiza; publica `src/htaW/htaW.csproj` con AOT, copia
+  `htaw.exe` a la raíz y explica cómo instalarlo en el `PATH` y asociar `.htaw`. Para forks: `WOLFGLUE_REPO_URL`.
+- `build.sh` (previsto, con los backends de Linux y macOS): lo mismo; en macOS montará `htaW.app`.
+- Tamaños con AOT: `htaw.exe` ~8,4 MB; el ejemplo `hola.exe` ~3,9 MB. Sin avisos de AOT.
+- `samples/htaw/notas.htaw` se genera con `htaw pack samples/htaw/notas` (está en `.gitignore`).
 
 ## Pruebas
 
@@ -40,9 +42,12 @@ dotnet publish samples/Hola -c Release -r win-x64   # ejemplo AOT (vswhere en el
   código, mensajes mal formados, ventana cerrada, eventos y reenvío, `UseJson`), tabla MIME, normalización de
   rutas, proveedores de contenido (recursos, carpeta, compuesto; rechazo de `..`), comprobación de origen, y
   tipos de los servicios nativos (patrones de filtro, forma JSON de opciones y resultados).
-- `tests/htaW.Tests`: detección de formato, extracción del manifiesto del HTML, validación del
-  manifiesto, reglas de permisos y de `shell.exec` (resolución en `PATH`, intérpretes, rutas),
-  detección de origen externo, `pack`.
+- `tests/htaW.Tests` (86 pruebas, pasan): línea de comandos, extracción del manifiesto del HTML, validación
+  del manifiesto e ids, permisos y forma canónica, reglas de `shell.exec` (resolución en `PATH` pasado como
+  parámetro, nombres frente a rutas, intérpretes, `*.*`), archivos ejecutables para `shell.open`, Mark of the
+  Web (flujo alternativo real en NTFS), reglas de `trust.json`, apertura de HTML/zip/carpeta, `pack`
+  (exclusiones y errores), inserción del CSS en el HTML (nunca antes del doctype), contraste del acento y
+  codificaciones de `exec`.
 - Acceso desde las pruebas a lo interno con `InternalsVisibleTo`.
 - Las pruebas que tocan variables de entorno van en una colección sin paralelismo.
 - La parte nativa (ventanas, webview) no se prueba de forma automática en CI.
@@ -54,7 +59,16 @@ síncronas y asíncronas, error con código, eventos desde otro hilo, segunda ve
 diálogo modal con resultado y salida con código 0 al cerrar la última ventana; servicios nativos: abrir
 (selección múltiple y filtros), guardar (nombre propuesto, cancelar), elegir carpeta, mensaje con
 Sí/No/Cancelar, copiar y pegar texto, pantallas (varios monitores con distinta escala), tema y mostrar en el
-explorador. Sin probar todavía: los puntos de DPI, tema en caliente y enlace externo, y todo lo de htaW.
+explorador.
+
+Probado en Windows 11 (JIT y AOT) con htaW: `hola.htaw` con CSS nativo y el acento del sistema, `exec` de un
+programa permitido, permiso no declarado rechazado, diálogo modal con resultado; `notas.htaw` (zip) marcado
+como descargado: ventana de permisos (Cancelar por defecto), guardar con `fs`/`dialog`, ajustes persistentes y
+segunda apertura sin preguntar; sin argumentos (selector de archivo); `--version` y `pack` con salida
+redirigida.
+
+Sin probar todavía: los puntos de DPI, tema en caliente y enlace externo; en htaW, `--register`, `fs.watch`,
+`spawn` y `http.fetch`.
 - Abrir, redimensionar y cerrar varias ventanas; modal sobre dueña.
 - Mover la ventana entre monitores con distinta escala.
 - Cambiar el tema claro/oscuro con la app abierta (contenido y barra de título).

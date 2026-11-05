@@ -92,3 +92,21 @@ Mismo esquema en los dos formatos (en el HTML suelto `entry` no se usa).
 - Cada app se sirve en `https://<id>.htaw.local/`. `localStorage`, IndexedDB y cookies quedan
   aislados por app sin necesidad de una carpeta de datos del webview distinta.
 - `htaw.settings` (ver HTAW-API.md) guarda en `<datos de usuario>/htaW/apps/<id>/settings.json`.
+
+## Estado de la implementación
+
+Implementado en `src/htaW/Package/` (`HtawManifest.cs`, `HtawPackage.cs`). Detalles fijados al implementar:
+
+- Id derivado (sin `id` en el manifiesto): `local-` + 16 caracteres hex del SHA-256 de la ruta completa
+  (en Windows, en minúsculas). Estable para el mismo archivo; distinto para archivos distintos.
+- El JSON del manifiesto admite comentarios y comas finales.
+- Se rechazan como error: JSON inválido, `id` inválido, `theme` distinto de `native`/`none`, tamaños fuera de
+  100–10000 × 80–10000, mínimos negativos, `frame` desconocido, `entry` que sale de la raíz, permisos
+  desconocidos o mal formados.
+- Avisos (no error): campos desconocidos (también dentro de `window`), HTML sin bloque de manifiesto,
+  `entry` en un HTML suelto (se ignora), `window.frame: "none"` (aún no soportado: se usa el marco del sistema).
+- El título de la ventana es `name`; si no hay, el `<title>` del documento.
+- `icon` y `singleInstance` se leen pero todavía no tienen efecto.
+- El prefijo de ruta `/_htaw/` está reservado para htaW (CSS y acceso binario a archivos): la app no debe usarlo.
+- Con `"theme": "native"` (por defecto), htaW inserta en cada respuesta HTML, justo tras `<head>`, su hoja
+  `/_htaw/htaw.css` y un `<style id="htaw-theme">` con el tema real. Nunca antes del `<!doctype>`.

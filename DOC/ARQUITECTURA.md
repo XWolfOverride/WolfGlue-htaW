@@ -8,14 +8,21 @@ WolfGlue/
 │  ├─ WolfGlue/                 biblioteca: núcleo + backends Windows/Linux/macOS
 │  │  └─ WolfGlue.targets       lo que debe importar el proyecto consumidor (ver CONSUMO.md)
 │  ├─ WolfGlue.Generators/      generador de código del bridge y de .d.ts (fase posterior)
-│  └─ htaW/                     ejecutable (WinExe, Native AOT)
-│     └─ assets/                htaw.css, shim JS, htaw.d.ts (recursos incrustados)
-├─ samples/Hola/                ejemplo C# (llamadas, eventos, varias ventanas, modal); .htaw de ejemplo mas adelante
+│  └─ htaW/                     ejecutable htaw (WinExe, Native AOT)
+│     ├─ Program.cs, Cli.cs     línea de comandos
+│     ├─ Package/               manifiesto, apertura de HTML/zip/carpeta, contenido
+│     ├─ Security/              permisos, shell.exec, origen (MOTW) y trust.json
+│     ├─ Api/                   HtawHost (GlueApp + API htaw.* + CSS), procesos, tipos JSON
+│     ├─ Packer.cs              htaw pack
+│     ├─ FileAssociation.cs     --register / --unregister
+│     └─ Assets/                htaw.js, htaw.css (incrustados), htaw.d.ts
+├─ samples/Hola/                ejemplo C# de WolfGlue (llamadas, eventos, ventanas, modal, servicios nativos)
+├─ samples/htaw/                hola.htaw y markdown.htaw (HTML suelto) y notas/ (carpeta para empaquetar)
 ├─ tests/
 │  ├─ WolfGlue.Tests/           xUnit
 │  └─ htaW.Tests/               xUnit
 ├─ DOC/
-├─ build.ps1 / build.sh         compilan htaW con AOT
+├─ build.ps1 / build.sh         autocompilan htaW con AOT (build.sh: previsto)
 ├─ run.cmd / run.sh             dotnet run de htaW (doble clic)
 ├─ publish.cmd                  solo publish AOT + copia a la raíz (doble clic, Windows)
 └─ AGENTS.md / CLAUDE.md
@@ -50,11 +57,16 @@ El backend se elige en tiempo de ejecución con `OperatingSystem.IsWindows()`, `
 - `Native`: diálogos, portapapeles, shell, tema, pantallas.
 - Evento `FilesOpened`: archivos que el sistema pide abrir (necesario en macOS, ver PLATAFORMAS.md).
 - Dueña del **entorno de webview compartido**: todas las ventanas usan el mismo proceso de navegador,
-  la misma caché y la misma carpeta de datos.
+  la misma caché y la misma carpeta de datos. Cada ventana es como una pestaña: solo añade su propio proceso
+  de renderizado. Medido en Windows con el ejemplo: 6 procesos y ~156 MB privados con una ventana; la segunda
+  añade un renderer y ~30 MB en total.
 
 ### GlueWindow (N por app)
 - Opciones: título, icono, tamaño (en unidades lógicas), mínimo/máximo, posición o centrado,
   redimensionable, sin marco, siempre encima, `Owner`, `Modal`.
+- `Show()` no hace visible la ventana en el acto: espera a que termine la primera carga de la página (o a un
+  máximo de 3 s) para no enseñar un marco vacío mientras se crea el webview. El tiempo total no cambia; lo que
+  se evita es la ventana vacía. Un diálogo modal deshabilita a su dueña desde el `Show()`.
 - Eventos: `Closing` (cancelable), `Closed`, `Resized`, `Moved`, `Activated`, `Deactivated`.
 - Contenido: `Navigate(url)`, o un proveedor de contenido para el host propio (recursos incrustados,
   zip, carpeta).

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script type="application/htaw+json">
+{
+  "id": "wolfglue.ejemplo.markdown",
+  "name": "Markdown preview",
+  "version": "1.0.0",
+  "window": { "width": 1100, "height": 720, "minWidth": 600, "minHeight": 400 },
+  "permissions": ["fs", "dialog", "clipboard"]
+}
+</script>
+<title>Markdown preview</title>
+<style>
+/* Aplicacion a ventana completa: sin el margen de htaW */
+html,body{height:100%;}
+body{padding:0;display:flex;flex-direction:column;}
+#mdp{
+ flex:1;
+ min-width:0;
+ min-height:0;
+ display:flex;
+ flex-direction:row;
+ gap:8px;
+ padding:8px;
+}
+#mdp .col{
+ flex:1 1 0;
+ min-width:0;
+ min-height:0;
+ display:flex;
+ flex-direction:column;
+ gap:8px;
+}
+#mdp .pane{
+ display:flex;
+ flex-direction:column;
+ min-height:0;
+ border:1px solid var(--htaw-border);
+ border-radius:var(--htaw-radius-large);
+ overflow:hidden;
+ background:var(--htaw-surface);
+}
+#mdp .pane.grow{flex:1 1 0;}
+#mdp .pane.css{flex:0 0 28%;}
+#mdp .toolbar{padding:4px 6px 4px 12px;gap:2px;}
+#mdp .toolbar .t{flex:1;font-weight:600;font-size:13px;color:var(--htaw-fg-muted);}
+#mdp .toolbar button{min-height:28px;padding:2px 10px;font-size:13px;}
+#mdp textarea{
+ flex:1;
+ min-height:0;
+ width:100%;
+ border:0;
+ border-radius:0;
+ outline:none;
+ resize:none;
+ margin:0;
+ padding:10px 12px;
+ font-family:"Cascadia Mono",Consolas,"Lucida Console",monospace;
+ font-size:13px;
+ tab-size:4;
+ background:var(--htaw-surface);
+}
+#mdp textarea:focus{border:0;padding-bottom:10px;}
+#mdp .css textarea{background:var(--htaw-control-bg);}
+#mdp iframe{
+ flex:1;
+ min-height:0;
+ width:100%;
+ border:0;
+ background:#FFF;
+}
+.statusbar span:last-child{margin-left:auto;}
+/* Ventana estrecha o vertical: edicion arriba y vista previa abajo */
+@media (orientation:portrait), (max-width:760px){
+ #mdp{flex-direction:column;}
+ #mdp .pane.css{flex-basis:25%;}
+}
+</style>
+</head>
+<body>
+<div id="mdp">
+ <div class="col">
+  <div class="pane grow">
+   <div class="toolbar"><span class="t">Markdown</span><button id="mdNew" title="New document (Ctrl+N)">New</button><button id="mdOpen" title="Open a .md file (Ctrl+O)">Open…</button><button id="mdSave" title="Save (Ctrl+S)">Save</button><button id="mdSaveAs" title="Save as… (Ctrl+Shift+S)">Save as…</button></div>
+   <textarea id="mdSrc" spellcheck="false"></textarea>
+  </div>
+  <div class="pane css">
+   <div class="toolbar"><span class="t">Preview stylesheet (CSS)</span><button id="cssReset" title="Restore default stylesheet">Default</button></div>
+   <textarea id="cssSrc" spellcheck="false"></textarea>
+  </div>
+ </div>
+ <div class="col">
+  <div class="pane grow">
+   <div class="toolbar"><span class="t">HTML preview</span><button id="htmlCopy" title="Copy generated HTML to clipboard">Copy HTML</button><button id="htmlSave" title="Save as standalone .html">Save .html…</button></div>
+   <iframe id="preview" title="preview"></iframe>
+  </div>
+ </div>
+</div>
+<div class="statusbar"><span id="stFile">Untitled</span><span id="stState"></span><span id="stCount"></span></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+(function(){
+ "use strict";
+ var DEFAULT_CSS=[
+  "body{",
+  " font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;",
+  " font-size:15px;",
+  " line-height:1.6;",
+  " color:#24292F;",
+  " max-width:900px;",
+  " margin:0 auto;",
+  " padding:16px 24px;",
+  "}",
+  "h1,h2{border-bottom:1px solid #D8DEE4;padding-bottom:.3em;}",
+  "a{color:#0969DA;}",
+  "code{font-family:Consolas,monospace;background:#EFF1F3;padding:.15em .35em;border-radius:4px;font-size:90%;}",
+  "pre{background:#F6F8FA;padding:12px;border-radius:6px;overflow:auto;}",
+  "pre code{background:none;padding:0;}",
+  "blockquote{margin:0;padding:0 1em;color:#57606A;border-left:4px solid #D0D7DE;}",
+  "table{border-collapse:collapse;}",
+  "th,td{border:1px solid #D0D7DE;padding:6px 13px;}",
+  "tr:nth-child(2n){background:#F6F8FA;}",
+  "img{max-width:100%;}",
+  "hr{border:0;border-top:1px solid #D8DEE4;}"
+ ].join("\n");
+
+ var DEFAULT_MD=[
+  "# Markdown preview",
+  "",
+  "Write **Markdown** on the left and see the *HTML* result live.",
+  "",
+  "## Lists",
+  "",
+  "- Item one",
+  "- Item two",
+  "  - Nested item",
+  "",
+  "1. First",
+  "2. Second",
+  "",
+  "- [x] Done task",
+  "- [ ] Pending task",
+  "",
+  "## Code",
+  "",
+  "Inline `code` and a block:",
+  "",
+  "```js",
+  "function hello(name){",
+  "    return 'Hello ' + name;",
+  "}",
+  "```",
+  "",
+  "## Table",
+  "",
+  "| Name | Value |",
+  "|------|------:|",
+  "| A    |     1 |",
+  "| B    |     2 |",
+  "",
+  "> A quote.",
+  "",
+  "[A link](https://example.com)",
+  ""
+ ].join("\n");
+
+ var MD_FILTERS=[{name:"Markdown",patterns:["md","markdown","txt"]},{name:"All files",patterns:["*"]}];
+ var mdSrc=document.getElementById("mdSrc"),
+     cssSrc=document.getElementById("cssSrc"),
+     frame=document.getElementById("preview"),
+     timer=null, ready=false,
+     path=null,          // ruta del .md abierto (null = sin guardar)
+     dirty=false;
+
+ function esc(s){ return s.replace(/[&<>]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }); }
+ function baseName(p){ return p ? p.split(/[\\/]/).pop() : "Untitled"; }
+ function docName(){ return path ? baseName(path).replace(/\.[^.]*$/,"") : "document"; }
+ function dirOf(p){ var i=Math.max(p.lastIndexOf("\\"),p.lastIndexOf("/")); return i>0 ? p.substring(0,i) : p; }
+
+ function toHtml(md){
+  if (window.marked) return marked.parse(md,{gfm:true,breaks:false});
+  return "<p style='color:#B00'>marked.js could not be loaded (no Internet access?). Showing plain text.</p><pre>"+esc(md)+"</pre>";
+ }
+
+ function fullDoc(body){
+  return "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>"+esc(docName())+"</title>\n<style>\n"+
+         cssSrc.value.replace(/<\/style/gi,"<\\/style")+"\n</style>\n</head>\n<body>\n"+body+"\n</body>\n</html>\n";
+ }
+
+ function updateStatus(){
+  document.getElementById("stFile").textContent=path||"Untitled";
+  document.getElementById("stState").textContent=dirty?"● modified":"";
+  document.getElementById("stCount").textContent=mdSrc.value.length+" characters";
+  htaw.window.setTitle((dirty?"● ":"")+baseName(path)+" — Markdown preview");
+ }
+
+ function render(){
+  timer=null;
+  if (!ready) return;
+  var d=frame.contentDocument;
+  d.getElementById("usercss").textContent=cssSrc.value;
+  d.body.innerHTML=toHtml(mdSrc.value);
+ }
+
+ function schedule(){
+  if (timer) clearTimeout(timer);
+  timer=setTimeout(render,150);
+ }
+
+ // Documento del iframe: aislado de los estilos de la app; los enlaces se abren en el navegador del sistema
+ frame.onload=function(){
+  ready=true;
+  frame.contentDocument.addEventListener("click",function(e){
+   var a=e.target.closest&&e.target.closest("a[href]");
+   if (!a) return;
+   var h=a.getAttribute("href");
+   e.preventDefault();
+   if (h.charAt(0)==="#"){
+    var t=frame.contentDocument.getElementById(decodeURIComponent(h.substring(1)));
+    if (t) t.scrollIntoView();
+    return;
+   }
+   window.open(a.href,"_blank","noopener");
+  });
+  render();
+ };
+ frame.srcdoc="<!DOCTYPE html><html><head><meta charset='utf-8'><style id='usercss'></style></head><body></body></html>";
+
+ mdSrc.addEventListener("input",function(){ dirty=true; updateStatus(); schedule(); });
+ cssSrc.addEventListener("input",function(){ htaw.settings.set("css",cssSrc.value); schedule(); });
+
+ // Tabulador e indentacion dentro de los editores
+ function tabKey(e){
+  if (e.key!=="Tab" || e.ctrlKey || e.altKey || e.metaKey) return;
+  e.preventDefault();
+  var ta=e.target, s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
+  if (s===en && !e.shiftKey){
+   ta.setRangeText("    ",s,en,"end");
+  } else {
+   var ls=v.lastIndexOf("\n",s-1)+1, block=v.substring(ls,en), out;
+   if (e.shiftKey) out=block.replace(/^( {1,4}|\t)/gm,"");
+   else out=block.replace(/^/gm,"    ");
+   ta.setRangeText(out,ls,en,"select");
+  }
+  ta.dispatchEvent(new Event("input"));
+ }
+ mdSrc.addEventListener("keydown",tabKey);
+ cssSrc.addEventListener("keydown",tabKey);
+
+ // Sincroniza el scroll de la vista previa con el del editor (proporcional)
+ mdSrc.addEventListener("scroll",function(){
+  if (!ready) return;
+  var se=frame.contentDocument.scrollingElement;
+  var max=mdSrc.scrollHeight-mdSrc.clientHeight;
+  if (se && max>0) se.scrollTop=(se.scrollHeight-se.clientHeight)*mdSrc.scrollTop/max;
+ });
+
+ // ---------------------------------------------------------------- archivos (dialogos y rutas reales)
+ async function openPath(p){
+  mdSrc.value=await htaw.fs.readText(p);
+  path=p; dirty=false;
+  await htaw.settings.set("last",p);
+  mdSrc.scrollTop=0;
+  updateStatus(); render();
+ }
+
+ async function save(as){
+  var target=path;
+  if (as || !target){
+   target=await htaw.dialog.save({title:"Save Markdown",fileName:docName()+".md",defaultExtension:"md",
+                                  defaultPath:path?dirOf(path):undefined,filters:MD_FILTERS});
+   if (!target) return false;
+  }
+  await htaw.fs.writeText(target,mdSrc.value);
+  path=target; dirty=false;
+  await htaw.settings.set("last",target);
+  updateStatus();
+  return true;
+ }
+
+ // Antes de descartar cambios: Si = guardar, No = descartar, Cancelar = no hacer nada
+ async function confirmDiscard(){
+  if (!dirty) return true;
+  var r=await htaw.dialog.message("The document has unsaved changes. Save them?",{kind:"question",buttons:"yesNoCancel"});
+  if (r==="cancel") return false;
+  if (r==="yes") return await save(false);
+  return true;
+ }
+
+ async function run(f){
+  try{ await f(); }
+  catch(e){ htaw.dialog.message((e.code?e.code+": ":"")+e.message,{kind:"error"}); }
+ }
+
+ document.getElementById("mdNew").onclick=function(){ run(async function(){
+  if (!(await confirmDiscard())) return;
+  mdSrc.value=""; path=null; dirty=false;
+  updateStatus(); render(); mdSrc.focus();
+ }); };
+ document.getElementById("mdOpen").onclick=function(){ run(async function(){
+  if (!(await confirmDiscard())) return;
+  var r=await htaw.dialog.open({title:"Open Markdown",filters:MD_FILTERS,defaultPath:path?dirOf(path):undefined});
+  if (r) await openPath(r[0]);
+ }); };
+ document.getElementById("mdSave").onclick=function(){ run(function(){ return save(false); }); };
+ document.getElementById("mdSaveAs").onclick=function(){ run(function(){ return save(true); }); };
+ document.getElementById("htmlSave").onclick=function(){ run(async function(){
+  var target=await htaw.dialog.save({title:"Save HTML",fileName:docName()+".html",defaultExtension:"html",
+                                     defaultPath:path?dirOf(path):undefined,
+                                     filters:[{name:"HTML",patterns:["html","htm"]}]});
+  if (target) await htaw.fs.writeText(target,fullDoc(toHtml(mdSrc.value)));
+ }); };
+ document.getElementById("cssReset").onclick=function(){ run(async function(){
+  if (cssSrc.value!==DEFAULT_CSS &&
+      await htaw.dialog.message("Replace the current stylesheet with the default one?",{kind:"question",buttons:"okCancel",defaultButton:1})!=="ok") return;
+  cssSrc.value=DEFAULT_CSS;
+  await htaw.settings.remove("css");
+  render();
+ }); };
+ document.getElementById("htmlCopy").onclick=function(){
+  var btn=this;
+  htaw.clipboard.writeText(toHtml(mdSrc.value)).then(
+   function(){ btn.textContent="Copied!"; },
+   function(){ btn.textContent="Copy failed"; }
+  ).then(function(){ setTimeout(function(){ btn.textContent="Copy HTML"; },1200); });
+ };
+
+ document.addEventListener("keydown",function(e){
+  if (!e.ctrlKey || e.altKey) return;
+  var k=e.key.toLowerCase();
+  if (k==="s"){ e.preventDefault(); document.getElementById(e.shiftKey?"mdSaveAs":"mdSave").click(); }
+  else if (k==="o"){ e.preventDefault(); document.getElementById("mdOpen").click(); }
+  else if (k==="n"){ e.preventDefault(); document.getElementById("mdNew").click(); }
+ });
+
+ // Si marked.js llega despues (o falla), vuelve a pintar
+ window.addEventListener("load",render);
+
+ // ---------------------------------------------------------------- arranque
+ // Archivo pasado como argumento (htaw markdown.htaw nota.md), o el ultimo abierto; si no, el ejemplo.
+ run(async function(){
+  cssSrc.value=await htaw.settings.get("css",DEFAULT_CSS);
+  var initial=htaw.app.args[0] || await htaw.settings.get("last");
+  if (initial && await htaw.fs.exists(initial)) await openPath(initial);
+  else { mdSrc.value=DEFAULT_MD; updateStatus(); render(); }
+  mdSrc.focus();
+ });
+})();
+</script>
+</body>
+</html>

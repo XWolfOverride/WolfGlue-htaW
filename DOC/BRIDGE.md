@@ -118,6 +118,8 @@ para descargas desde C# y para subidas mediante POST (en Linux, WebKitGTK ≥ 2.
 
 - Solo se aceptan mensajes cuyo origen sea el host propio. Los mensajes desde cualquier otro origen
   se descartan.
-- La navegación de la ventana principal a URLs externas se cancela y se abre en el navegador del sistema.
+- La navegación de la ventana principal a URLs externas se cancela y se abre en el navegador del sistema,
+  pero **solo** si el esquema es `http`, `https` o `mailto` (`GlueApp.OpenExternal` / `IsWebUrl`). Cualquier otro
+  (`file:`, rutas, protocolos de otras aplicaciones) se descarta: el shell podría ejecutar programas con ellos.
 - DevTools y el menú contextual por defecto solo están activos en Debug o con una opción explícita.
 - Los servicios expuestos son los que registra la aplicación; no hay acceso genérico a .NET desde JS.

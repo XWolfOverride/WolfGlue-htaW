@@ -67,6 +67,8 @@ public sealed class MessageOptions
     public string? Title { get; set; }
     public MessageKind Kind { get; set; } = MessageKind.Info;
     public MessageButtons Buttons { get; set; } = MessageButtons.Ok;
+    /// <summary>Boton por defecto (0 = el primero). Para preguntas peligrosas, el de cancelar.</summary>
+    public int DefaultButton { get; set; }
 }
 
 /// <summary>Rectangulo en pixeles fisicos del escritorio virtual.</summary>

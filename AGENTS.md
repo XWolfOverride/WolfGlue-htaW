@@ -32,6 +32,11 @@ Repositorio con dos piezas:
 - htaW: permisos declarados en el manifiesto + confirmacion si el archivo viene de fuera (MOTW / quarantine).
 - htaW: `shell.exec` permitido, con permiso por nombre de proceso; `"*.*"` o `""` = todos, con aviso destacado.
 - htaW: un proceso por app; origen `https://<id>.htaw.local/` para aislar almacenamiento.
+- htaW: `.bat`/`.cmd` solo con shell.exec "todos" (cmd reinterpreta los argumentos); la busqueda de
+  ejecutables es solo en el PATH; nunca hay shell intermedio.
+- htaW: la ventana de permisos es un mensaje nativo con Cancelar por defecto; decisiones en `trust.json`
+  (por hash de archivo y por id de app). Datos en `%LOCALAPPDATA%\htaW` (forzable con `HTAW_DATA`).
+- htaW inserta `/_htaw/htaw.css` + `<style id="htaw-theme">` tras `<head>` en cada HTML (prefijo `/_htaw/` reservado).
 
 ## Estado
 - Fase 1 (WolfGlue en Windows) completa: `src/WolfGlue` (API, bridge, contenido, servicios nativos `app.Native`,
@@ -42,11 +47,20 @@ Repositorio con dos piezas:
   el explorador.
 - Sin probar: cambio de DPI entre monitores, cambio de tema en caliente (evento `glue.theme`), enlace externo.
 - Limitacion conocida: el mensaje nativo (`MessageBoxW`) sale en modo claro aunque el sistema este en oscuro.
-- htaW, macOS y Linux: sin empezar. `run.cmd`/`run.sh`/`publish.cmd` lanzan/publican el ejemplo hasta que exista htaW.
+- Fase 2 (htaW en Windows) casi completa: `src/htaW` (paquete y manifiesto, permisos y confianza, API `htaw.*`,
+  CSS nativo, linea de comandos), `samples/htaw` (`hola.htaw`, `markdown.htaw` y la carpeta `notas`) y `tests/htaW.Tests`
+  (86 pruebas, pasan). AOT: un `htaw.exe` de ~8,4 MB, sin avisos.
+- Probado a mano (JIT y AOT): HTML suelto con CSS nativo y acento del sistema, `exec` permitido, permiso denegado,
+  dialogo modal con resultado, zip con confirmacion por Mark of the Web, guardar con `fs` y `dialog`, ajustes
+  persistentes, segunda apertura sin preguntar, sin argumentos (selector), `--version` y `pack` con salida redirigida.
+- Falta de la fase 2: instancia unica, `icon`, `onClosing`, ventana de recientes. Sin probar: `--register`,
+  `fs.watch`, `spawn`, `http.fetch`.
+- macOS y Linux: sin empezar (sin `build.sh` hasta entonces).
 - Repositorio git sin remoto y sin commits.
 
 ## Compilar
-`dotnet build`, `dotnet test`, `run.cmd` (ejemplo con `dotnet run`), `publish.cmd` (ejemplo AOT -> `hola.exe` en la raiz).
+`dotnet build`, `dotnet test`, `run.cmd` (htaW con `dotnet run`), `publish.cmd` (htaW AOT -> `htaw.exe` en la raiz),
+`build.ps1` (autocompilacion). Ejemplo C#: `dotnet run --project samples/Hola`.
 Detalle en [DOC/COMPILACION-Y-PRUEBAS.md](DOC/COMPILACION-Y-PRUEBAS.md).
 
 ## Documentacion

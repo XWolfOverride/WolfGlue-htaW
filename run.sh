@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
-# Ejecuta el ejemplo de WolfGlue con dotnet run. Cuando exista htaW, lanzara htaW.
+# Ejecuta htaW con dotnet run. Sin argumentos pide el .htaw a abrir.
 cd "$(dirname "$0")" || exit 1
-exec dotnet run --project samples/Hola/Hola.csproj -- "$@"
+exec dotnet run --project src/htaW/htaW.csproj -- "$@"

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Notas</title>
+  <link rel="stylesheet" href="notas.css">
+</head>
+<body>
+  <div class="layout-fill">
+    <div class="toolbar">
+      <button id="nuevo" title="Ctrl+N">Nuevo</button>
+      <button id="abrir" title="Ctrl+O">Abrir…</button>
+      <button id="guardar" title="Ctrl+S">Guardar</button>
+      <button id="guardarComo">Guardar como…</button>
+      <span class="spacer"></span>
+      <button id="mostrar" disabled>Mostrar en la carpeta</button>
+    </div>
+    <textarea id="texto" spellcheck="false" placeholder="Escribe aquí…"></textarea>
+    <div class="statusbar">
+      <span id="archivo">Sin título</span>
+      <span id="estado"></span>
+      <span id="cuenta" style="margin-left:auto"></span>
+    </div>
+  </div>
+  <script src="notas.js"></script>
+</body>
+</html>

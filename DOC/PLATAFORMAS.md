@@ -31,6 +31,11 @@ La web se pinta con dos motores distintos (Chromium y WebKit), así que hay que 
 - Si no hay runtime de WebView2, se muestra un mensaje nativo (`MessageBoxW`) con el enlace al
   instalador y la app termina con un código de error.
 - Carpeta de datos del webview: `%LOCALAPPDATA%\<idApp>\WebView2`, nunca junto al ejecutable.
+- Mostrar cuando está lista: la ventana se crea oculta y `ShowWindow` se llama en el primer
+  `NavigationCompleted` (con éxito o error) o al saltar un temporizador de 3 s (`SetTimer` + `WM_TIMER`).
+  Comprobado: el webview pinta aunque la ventana esté oculta, así que aparece ya con contenido.
+  Pendiente opcional: un webview precalentado para que las ventanas nuevas aparezcan casi al instante
+  (cuesta ~25 MB mientras espera).
 
 ### DPI
 - Manifiesto con `PerMonitorV2`.

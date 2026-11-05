@@ -71,3 +71,21 @@ Con el fondo Mica activo (opción de ventana), `--htaw-bg` pasa a ser transparen
   tamaños, colores, radios, foco).
 - Las clases y variables públicas se documentan en `htaw.d.ts` / en este archivo y no se renombran
   sin dejar alias.
+
+## Estado de la implementación
+
+`src/htaW/Assets/htaw.css`, con el aspecto de Windows 11 (los valores de macOS y Linux son provisionales hasta
+probar en esos sistemas).
+
+- htaW inserta la hoja tras `<head>` y, detrás, `<style id="htaw-theme">` con `--htaw-accent`,
+  `--htaw-accent-text` (blanco o negro según la luminancia del acento) y `--htaw-font`. El shim los actualiza
+  si el tema cambia con la app abierta. La hoja de la app va después y puede sobreescribir cualquier variable.
+- Claro/oscuro: por `prefers-color-scheme`, que el webview sigue solo.
+- `html[data-os]` lo pone el shim al crearse el documento.
+- Variables públicas: `--htaw-accent`, `--htaw-accent-text`, `--htaw-font`, `--htaw-font-size`, `--htaw-radius`,
+  `--htaw-radius-large`, `--htaw-bg`, `--htaw-surface`, `--htaw-fg`, `--htaw-fg-muted`, `--htaw-border`,
+  `--htaw-border-strong`, `--htaw-control-bg`, `--htaw-control-hover`, `--htaw-control-active`,
+  `--htaw-selection`, `--htaw-link`.
+- Clases: las de la tabla anterior más `.card`, `.row`, `.column`, `.muted`, `.selectable`, y `.toolbar .spacer`.
+- Botón principal: `button[type=submit]`, `.default` o `.primary`.
+- Fondo Mica: pendiente.

@@ -59,3 +59,18 @@ public class NativeTests
         Assert.Equal(@"C:\tmp", o.DefaultPath);
     }
 }
+
+public class ExternalUrlTests
+{
+    [Theory]
+    [InlineData("https://example.com/x", true)]
+    [InlineData("http://example.com", true)]
+    [InlineData("mailto:a@b.c", true)]
+    [InlineData("file:///C:/Windows/System32/calc.exe", false)]
+    [InlineData("C:\\Windows\\System32\\calc.exe", false)]
+    [InlineData("ms-msdt:/id", false)]
+    [InlineData("javascript:alert(1)", false)]
+    [InlineData("\\\\servidor\\recurso\\x.exe", false)]
+    [InlineData("relativo.html", false)]
+    public void OnlyWebSchemes(string url, bool expected) => Assert.Equal(expected, GlueApp.IsWebUrl(url, out _));
+}

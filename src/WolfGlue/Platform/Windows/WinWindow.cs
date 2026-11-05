@@ -50,14 +50,33 @@ internal sealed class WinWindow : IPlatformWindow
     }
 
     // ------------------------------------------------------------- IPlatformWindow
+    /// <summary>
+    /// La ventana no se hace visible hasta que la pagina inicial termina de cargar (o pasa
+    /// <see cref="RevealTimeoutMs"/>), para no mostrar un marco vacio mientras se crea el webview.
+    /// </summary>
     public void Show()
     {
         var o = _host.Options;
         PlaceWindow(o);
         if (o.Modal && _owner != 0) Win32.EnableWindow(_owner, false);
-        Win32.ShowWindow(Hwnd, o.Maximized ? Win32.SW_SHOWMAXIMIZED : Win32.SW_SHOWNORMAL);
-        Win32.SetForegroundWindow(Hwnd);
+        Win32.SetTimer(Hwnd, RevealTimerId, RevealTimeoutMs, 0);
         _platform.WhenEnvironment(CreateController);
+    }
+
+    /// <summary>Tiempo maximo de espera antes de mostrar la ventana aunque la pagina no haya cargado.</summary>
+    internal const uint RevealTimeoutMs = 3000;
+    private const nint RevealTimerId = 1;
+    private bool _revealed;
+
+    /// <summary>Hace visible la ventana (una sola vez).</summary>
+    private void Reveal()
+    {
+        if (_revealed || _destroyed) return;
+        _revealed = true;
+        Win32.KillTimer(Hwnd, RevealTimerId);
+        Win32.ShowWindow(Hwnd, _host.Options.Maximized ? Win32.SW_SHOWMAXIMIZED : Win32.SW_SHOWNORMAL);
+        Win32.SetForegroundWindow(Hwnd);
+        _controller?.MoveFocus(WebView2Const.MOVE_FOCUS_REASON_PROGRAMMATIC);
     }
 
     public void Close()
@@ -103,6 +122,8 @@ internal sealed class WinWindow : IPlatformWindow
     public void PostMessage(string json) => _webview?.PostWebMessageAsString(json);
 
     public void OpenDevTools() => _webview?.OpenDevToolsWindow();
+
+    public void Reload() => _webview?.Reload();
 
     // ------------------------------------------------------------- tamano y posicion
     private uint Dpi
@@ -209,8 +230,12 @@ internal sealed class WinWindow : IPlatformWindow
         }));
         wv.add_DocumentTitleChanged(new DocumentTitleChangedHandler(() => _host.OnDocumentTitleChanged(wv.get_DocumentTitle())));
         wv.add_WindowCloseRequested(new WindowCloseRequestedHandler(Close));
+        // Primera carga terminada (bien o con error): ya se puede mostrar la ventana.
+        wv.add_NavigationCompleted(new NavigationCompletedHandler(Reveal));
 
-        wv.AddScriptToExecuteOnDocumentCreated(Shim.For(((GlueWindow)_host).Id, "windows"), new AddScriptCompletedHandler());
+        var scripts = Shim.For(((GlueWindow)_host).Id, "windows");
+        foreach (var extra in _host.ExtraScripts) scripts += "\n;" + extra;
+        wv.AddScriptToExecuteOnDocumentCreated(scripts, new AddScriptCompletedHandler());
 
         ResizeWebView();
         controller.put_IsVisible(true);
@@ -380,6 +405,11 @@ internal sealed class WinWindow : IPlatformWindow
                     Win32.DestroyWindow(hwnd);
                 }
                 return 0;
+
+            case Win32.WM_TIMER:
+                // Red de seguridad: si la pagina tarda demasiado, la ventana se muestra igualmente.
+                if (wParam == RevealTimerId) { Reveal(); return 0; }
+                break;
 
             case Win32.WM_DESTROY:
                 _destroyed = true;

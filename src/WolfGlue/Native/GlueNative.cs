@@ -141,8 +141,11 @@ public sealed class NativeShell
     private readonly GlueApp _app;
     internal NativeShell(GlueApp app) => _app = app;
 
-    /// <summary>Abre una URL con el navegador del sistema.</summary>
-    public void OpenUrl(string url) => _app.Platform.OpenExternal(url);
+    /// <summary>Abre una URL (http, https o mailto) con el navegador del sistema.</summary>
+    public void OpenUrl(string url)
+    {
+        if (!_app.OpenExternal(url)) throw new ArgumentException("Solo URLs http, https o mailto: " + url, nameof(url));
+    }
 
     /// <summary>Abre un archivo o carpeta con la aplicacion por defecto.</summary>
     public void Open(string path) => _app.Platform.Services.Open(Path.GetFullPath(path));

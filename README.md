@@ -14,8 +14,8 @@ El repositorio incluye **htaW**, un lanzador de aplicaciones `.htaw`: aplicacion
 hechas solo con web, con una API para archivos, diálogos, procesos y ventanas, y un estilo por
 defecto que imita el del sistema donde se ejecutan.
 
-> **Estado:** la biblioteca funciona en Windows (con un ejemplo en `samples/Hola`); htaW, Linux y
-> macOS están en diseño. Detalle en [DOC/](DOC/README.md).
+> **Estado:** la biblioteca y htaW funcionan en Windows (ejemplos en `samples/Hola` y `samples/htaw`);
+> Linux y macOS están en diseño. Detalle en [DOC/](DOC/README.md).
 
 ## WolfGlue (biblioteca)
 
@@ -41,12 +41,37 @@ htaW las abre con doble clic, aplica un CSS con aspecto nativo y ofrece la API `
 aplicación se declara en su manifiesto y, si el archivo viene de Internet, se pide confirmación
 antes de abrirla por primera vez.
 
-Detalles en [DOC/HTAW-FORMATO.md](DOC/HTAW-FORMATO.md), [DOC/HTAW-API.md](DOC/HTAW-API.md) y
-[DOC/HTAW-SEGURIDAD.md](DOC/HTAW-SEGURIDAD.md).
+Ejemplo mínimo (`hola.htaw`):
+
+```html
+<!doctype html>
+<html>
+<head>
+  <script type="application/htaw+json">
+  { "id": "com.ejemplo.hola", "name": "Hola", "window": { "width": 480, "height": 320 },
+    "permissions": ["dialog"] }
+  </script>
+</head>
+<body>
+  <h1>Hola</h1>
+  <button type="submit" onclick="htaw.dialog.message('¡Hola!')">Saludar</button>
+</body>
+</html>
+```
+
+Uso:
+
+```
+htaw app.htaw [argumentos]     abre la aplicación
+htaw --dev carpeta             desarrollo: DevTools y recarga al guardar
+htaw pack carpeta              empaqueta una carpeta como .htaw
+htaw --register                abre los .htaw con doble clic (para tu usuario)
+```
+
+Detalles en [DOC/HTAW-FORMATO.md](DOC/HTAW-FORMATO.md), [DOC/HTAW-API.md](DOC/HTAW-API.md),
+[DOC/HTAW-SEGURIDAD.md](DOC/HTAW-SEGURIDAD.md) y [DOC/HTAW-INTEGRACION.md](DOC/HTAW-INTEGRACION.md).
 
 ## Compilar desde fuentes
-
-*(Previsto; los scripts aún no existen.)*
 
 htaW se compila en tu máquina con un solo comando. El script comprueba que tienes lo necesario
 (**no instala nada**; si falta algo, te dice qué y cómo instalarlo), descarga la última versión,
@@ -61,8 +86,10 @@ Xcode Command Line Tools en macOS). Para **ejecutar** en Linux hace falta WebKit
 irm https://raw.githubusercontent.com/XWolfOverride/WolfGlue/main/build.ps1 | iex           # Windows
 ```
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XWolfOverride/WolfGlue/main/build.sh | bash    # Linux y macOS
+curl -fsSL https://raw.githubusercontent.com/XWolfOverride/WolfGlue/main/build.sh | bash    # Linux y macOS (cuando estén soportados)
 ```
+
+Dentro de la carpeta del proyecto también puedes usar `publish.cmd` (doble clic, solo compila).
 
 **Para actualizar a una nueva versión, vuelve a ejecutar el mismo comando.** Para compilar un
 fork, define `WOLFGLUE_REPO_URL` con la URL de tu repositorio.

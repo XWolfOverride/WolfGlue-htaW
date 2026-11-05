@@ -156,6 +156,7 @@ internal sealed unsafe class WinServices(WinPlatform platform) : IPlatformServic
         };
         var hwnd = Hwnd(owner);
         if (hwnd == 0) flags |= Win32.MB_TASKMODAL;
+        flags |= o.DefaultButton switch { 1 => Win32.MB_DEFBUTTON2, 2 => Win32.MB_DEFBUTTON3, _ => 0u };
         return Win32.MessageBoxW(hwnd, o.Text, title, flags) switch
         {
             Win32.IDOK => MessageResult.Ok,

@@ -88,6 +88,8 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     public void Restore() => _native.Restore();
     public void Focus() => _native.Focus();
     public void OpenDevTools() => _native.OpenDevTools();
+    /// <summary>Recarga la pagina actual.</summary>
+    public void Reload() => _native.Reload();
 
     /// <summary>Navega a una ruta del origen propio o a una URL completa.</summary>
     public void Navigate(string pageOrUrl) => _native.Navigate(ResolveUrl(pageOrUrl));
@@ -117,6 +119,7 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     string IWindowHost.StartUrl => ResolveUrl(Options.StartPage);
     string IWindowHost.Origin => App.Origin;
     bool IWindowHost.DevTools => App.Options.DevTools;
+    IReadOnlyList<string> IWindowHost.ExtraScripts => App.Scripts;
 
     void IWindowHost.OnWebViewReady()
     {

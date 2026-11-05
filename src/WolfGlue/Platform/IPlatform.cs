@@ -59,6 +59,8 @@ internal interface IPlatformWindow
     void Navigate(string url);
     void PostMessage(string json);
     void OpenDevTools();
+    /// <summary>Recarga la pagina actual.</summary>
+    void Reload();
 }
 
 /// <summary>Lo que la ventana nativa notifica a <see cref="GlueWindow"/>. Todo en el hilo de UI.</summary>
@@ -68,6 +70,8 @@ internal interface IWindowHost
     string StartUrl { get; }
     string Origin { get; }
     bool DevTools { get; }
+    /// <summary>Scripts que se inyectan tras el shim en cada documento.</summary>
+    IReadOnlyList<string> ExtraScripts { get; }
     void OnWebViewReady();
     void OnWebMessage(string json, string source);
     /// <summary>Devuelve false para cancelar el cierre.</summary>

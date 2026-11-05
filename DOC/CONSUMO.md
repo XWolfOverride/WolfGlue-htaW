@@ -93,6 +93,12 @@ const texto = await glue.call("saludo", "mundo");
   `Modal`, `Content`, `StartPage`.
 - Proveedores de contenido: `EmbeddedContent`, `FolderContent`, `CompositeContent`, o uno propio con `IContentProvider`.
 - Desde otros hilos: `app.Invoke`, `app.InvokeAsync`, `app.Emit`.
+- `app.Scripts`: JS propio que se inyecta en cada documento tras el shim (`glue` ya existe), antes que la
+  página. Añadirlo antes de mostrar las ventanas.
+- `window.Reload()`: recarga la página actual.
+- `GlueApp.ShowError(título, texto)` (estático): mensaje de error nativo sin necesidad de un `GlueApp`, para
+  errores de arranque.
+- `MessageOptions.DefaultButton`: botón por defecto de un mensaje (0 = el primero).
 - Servicios nativos (`using WolfGlue.Native;`), desde cualquier hilo:
 
 ```csharp

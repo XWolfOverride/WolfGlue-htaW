@@ -1,5 +1,5 @@
 @echo off
-rem Publica el ejemplo hola.exe (NativeAOT) y lo deja en la raiz del proyecto. Cuando exista htaW, publicara htaW.
+rem Publica htaw.exe (NativeAOT) y lo deja en la raiz del proyecto.
 rem Solo compila: no comprueba requisitos ni descarga nada (para eso, build.ps1).
 rem Se puede lanzar con doble clic.
 setlocal
@@ -22,13 +22,13 @@ set "PATH=%PATH%;%ProgramFiles(x86)%\Microsoft Visual Studio\Installer"
 set "DOTNET_NOLOGO=1"
 
 if exist publish rmdir /s /q publish
-echo ^>^>   Compilando hola (NativeAOT, %RID%)... puede tardar un par de minutos
-dotnet publish samples\Hola\Hola.csproj -c Release -r %RID% -o publish\hola -nologo -v q
+echo ^>^>   Compilando htaw (NativeAOT, %RID%)... puede tardar un par de minutos
+dotnet publish src\htaW\htaW.csproj -c Release -r %RID% -o publish\htaw -nologo -v q
 if errorlevel 1 goto :error
-copy /y publish\hola\hola.exe hola.exe >nul
+copy /y publish\htaw\htaw.exe htaw.exe >nul
 if errorlevel 1 goto :error
 rmdir /s /q publish
-echo [OK] hola.exe -^> %~dp0hola.exe
+echo [OK] htaw.exe -^> %~dp0htaw.exe
 goto :fin
 
 :error

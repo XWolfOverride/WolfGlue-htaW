@@ -12,5 +12,6 @@ artifacts/
 /htaw
 /htaw.exe
 /htaW.app/
-/hola
-/hola.exe
+
+# Ejemplo empaquetado (se genera con: htaw pack samples/htaw/notas)
+/samples/htaw/notas.htaw

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <script type="application/htaw+json">
+  {
+    "id": "wolfglue.ejemplo.hola",
+    "name": "Hola htaW",
+    "version": "1.0.0",
+    "window": { "width": 560, "height": 460, "minWidth": 420, "minHeight": 320 },
+    "permissions": ["dialog", "clipboard", { "shell.exec": ["git"] }]
+  }
+  </script>
+  <title>Hola htaW</title>
+</head>
+<body>
+  <h1>Hola htaW</h1>
+  <p class="muted">Un único HTML, sin CSS propio: el aspecto lo pone htaW.</p>
+
+  <fieldset>
+    <legend>Controles estándar</legend>
+    <div class="row">
+      <input id="nombre" placeholder="Tu nombre">
+      <select><option>Uno</option><option>Dos</option></select>
+      <label><input type="checkbox" checked> Marcado</label>
+      <label><input type="radio" name="r" checked> A</label>
+      <label><input type="radio" name="r"> B</label>
+    </div>
+    <p><progress value="60" max="100"></progress></p>
+  </fieldset>
+
+  <div class="row">
+    <button id="saludar" type="submit">Saludar</button>
+    <button id="git">Versión de git</button>
+    <button id="noPermiso">Leer archivo (sin permiso)</button>
+    <button id="ajustes">Ajustes…</button>
+  </div>
+  <pre id="salida">&nbsp;</pre>
+
+  <script>
+    const out = (v) => document.getElementById("salida").textContent = typeof v === "string" ? v : JSON.stringify(v, null, 2);
+    document.getElementById("saludar").onclick = async () => {
+      const n = document.getElementById("nombre").value || "mundo";
+      await htaw.dialog.message(`Hola, ${n}. Esta app se llama ${htaw.app.name} (${htaw.app.id}).`);
+    };
+    document.getElementById("git").onclick = async () => {
+      try {
+        const r = await htaw.shell.exec("git", ["--version"]);
+        out(r.stdout.trim() || r.stderr);
+      } catch (e) { out(`${e.code}: ${e.message}`); }
+    };
+    document.getElementById("noPermiso").onclick = async () => {
+      try { await htaw.fs.readText("hola.htaw"); }
+      catch (e) { out(`${e.code}: ${e.message}`); }
+    };
+    document.getElementById("ajustes").onclick = async () => {
+      const w = await htaw.window.open("ajustes.html", { modal: true, width: 360, height: 200, resizable: false });
+      out({ resultadoDelDialogo: await w.result });
+    };
+    out({ permisos: htaw.permissions, tema: { oscuro: htaw.theme.dark, acento: htaw.theme.accent }, args: htaw.app.args });
+  </script>
+</body>
+</html>

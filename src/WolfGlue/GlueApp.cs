@@ -35,6 +35,18 @@ public sealed class GlueApp
     /// <summary>Servicios nativos: dialogos, portapapeles, pantallas, tema y shell.</summary>
     public Native.GlueNative Native { get; }
 
+    /// <summary>
+    /// Mensaje de error nativo y bloqueante, sin necesidad de un GlueApp (para errores de arranque).
+    /// En sistemas sin backend todavia, se escribe en la salida de error.
+    /// </summary>
+    public static void ShowError(string title, string message)
+    {
+        if (OperatingSystem.IsWindows())
+            WolfGlue.Platform.Windows.Win32.MessageBoxW(0, message, title, WolfGlue.Platform.Windows.Win32.MB_OK | WolfGlue.Platform.Windows.Win32.MB_ICONERROR);
+        else
+            Console.Error.WriteLine($"{title}: {message}");
+    }
+
     private static IPlatform CreatePlatform()
     {
         if (OperatingSystem.IsWindows()) return new Platform.Windows.WinPlatform();
@@ -50,6 +62,12 @@ public sealed class GlueApp
 
     /// <summary>Puente web ↔ C# compartido por todas las ventanas.</summary>
     public GlueBridge Bridge { get; } = new();
+
+    /// <summary>
+    /// Scripts JS propios que se inyectan en cada documento justo despues del shim (<c>glue</c> ya existe), antes que
+    /// los de la pagina. Anadirlos antes de mostrar las ventanas.
+    /// </summary>
+    public List<string> Scripts { get; } = [];
 
     /// <summary>Contenido por defecto de las ventanas.</summary>
     public IContentProvider? Content { get; set; }
@@ -122,8 +140,30 @@ public sealed class GlueApp
         Invoke(() => { foreach (var w in _windows.ToArray()) w.SendToWeb(json); });
     }
 
-    /// <summary>Abre una URL o archivo con la aplicacion por defecto del sistema.</summary>
-    public void OpenExternal(string url) => _platform.OpenExternal(url);
+    /// <summary>
+    /// Abre una URL web (<c>http</c>, <c>https</c>, <c>mailto</c>) con la aplicacion por defecto del sistema.
+    /// Cualquier otro esquema (<c>file:</c>, protocolos de otras aplicaciones…) se rechaza y devuelve false: el
+    /// shell podria ejecutar programas con ellos. Para abrir archivos esta <c>Native.Shell.Open</c>.
+    /// </summary>
+    public bool OpenExternal(string url)
+    {
+        if (!IsWebUrl(url, out var uri)) return false;
+        _platform.OpenExternal(uri.AbsoluteUri);
+        return true;
+    }
+
+    /// <summary>URL absoluta con esquema http, https o mailto.</summary>
+    public static bool IsWebUrl(string url, out Uri uri)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var u) && (u.Scheme == Uri.UriSchemeHttp
+            || u.Scheme == Uri.UriSchemeHttps || u.Scheme == Uri.UriSchemeMailto))
+        {
+            uri = u;
+            return true;
+        }
+        uri = null!;
+        return false;
+    }
 
     internal void CheckThread()
     {
