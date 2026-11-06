@@ -38,6 +38,8 @@ internal sealed class HtawHost
         _dev = dev;
         _perms = pkg.Permissions;
         _procs = new Processes(_perms, pkg.Directory ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        // Cada app es su propio grupo en la barra de tareas, con su icono (si no, todas son htaw.exe y se agrupan).
+        TaskbarId.Set("htaW." + pkg.Id);
         _app = new GlueApp(new GlueAppOptions
         {
             AppId = "htaW",
@@ -47,6 +49,8 @@ internal sealed class HtawHost
             DataFolder = Path.Combine(HtawPaths.Root, "WebView2"),
             // Mismo fondo que --htaw-bg de htaw.css, para que la ventana aparezca ya con el color de la pagina.
             Background = pkg.Manifest.Theme == "native" ? HtawBackground : null,
+            // Icono del manifiesto en todas las ventanas; si no hay, el del ejecutable.
+            Icon = pkg.Icon,
         });
         _app.Bridge.UseJson(ApiJson.Default);
         _app.Content = new HtawContent(pkg, _perms, () => HtmlInjector.ThemeStyle(_app.Native.Theme.Current));
@@ -131,7 +135,8 @@ internal sealed class HtawHost
                 File = _pkg.SourcePath,
             },
             Permissions = [.. _perms.Canonical()],
-            Theme = _pkg.Manifest.Theme == "native" ? _app.Native.Theme.Current : null,
+            // Siempre: htaw.theme es igual con theme "none" (solo el CSS depende de "native").
+            Theme = _app.Native.Theme.Current,
             Os = OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux",
             Warnings = [.. _pkg.Warnings],
             Dev = _dev,
@@ -179,7 +184,7 @@ internal sealed class HtawHost
         {
             var psi = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
             if (_dev) psi.ArgumentList.Add("--dev");
-            psi.ArgumentList.Add(_pkg.SourcePath);
+            if (!_pkg.Embedded) psi.ArgumentList.Add(_pkg.SourcePath); // el portable ya lleva la app dentro
             foreach (var a in _args) psi.ArgumentList.Add(a);
             Process.Start(psi);
             _app.Quit(0);
@@ -574,4 +579,18 @@ internal static class PermissionPrompt
         sb.Append(Strings.PromptQuestion);
         return sb.ToString();
     }
+}
+
+/// <summary>Identificador de la app en la barra de tareas de Windows (AppUserModelID) para todo el proceso.</summary>
+internal static partial class TaskbarId
+{
+    public static void Set(string id)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        // Maximo 128 caracteres; el id de app ya es [a-z0-9.-].
+        SetCurrentProcessExplicitAppUserModelID(id.Length > 128 ? id[..128] : id);
+    }
+
+    [System.Runtime.InteropServices.LibraryImport("shell32.dll", StringMarshalling = System.Runtime.InteropServices.StringMarshalling.Utf16)]
+    private static partial int SetCurrentProcessExplicitAppUserModelID(string appId);
 }

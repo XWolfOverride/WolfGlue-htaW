@@ -19,11 +19,15 @@ en [AGENTS.md](../AGENTS.md).
 | [PLATAFORMAS.md](PLATAFORMAS.md) | Detalle de Windows, Linux y macOS: APIs, DPI, problemas conocidos |
 | [BRIDGE.md](BRIDGE.md) | Comunicación web ↔ C#: protocolo, shim JS, host propio, seguridad |
 | [CONSUMO.md](CONSUMO.md) | Cómo usar WolfGlue como `ProjectReference` desde otro proyecto |
+| [manual/](manual/README.md) | **Manual de htaW**: uso, y guía completa para desarrollar apps (manifiesto, API, permisos, CSS, ventanas, distribución, recetas) |
+| [manual-en/](manual-en/README.md) | El mismo manual en inglés |
 | [HTAW-FORMATO.md](HTAW-FORMATO.md) | Formatos `.htaw`, manifiesto, carga de recursos |
 | [HTAW-API.md](HTAW-API.md) | API JavaScript `htaw.*` |
 | [HTAW-SEGURIDAD.md](HTAW-SEGURIDAD.md) | Permisos, confirmación, reglas de `shell.exec` |
 | [HTAW-ESTILO.md](HTAW-ESTILO.md) | CSS con aspecto nativo por sistema |
 | [HTAW-INTEGRACION.md](HTAW-INTEGRACION.md) | Asociación de archivos, procesos, herramientas de desarrollo |
+| [HTAW-OTRAS-PLATAFORMAS.md](HTAW-OTRAS-PLATAFORMAS.md) | Evaluación: htaW en Android e iOS y portables para otros sistemas |
+| [ICONOS.md](ICONOS.md) | Estilo de los iconos de app y cómo se generan (`tools/iconos`) |
 | [COMPILACION-Y-PRUEBAS.md](COMPILACION-Y-PRUEBAS.md) | Build, publicación AOT, pruebas, estado |
 | [HOJA-DE-RUTA.md](HOJA-DE-RUTA.md) | Orden de implementación y decisiones pendientes |
 

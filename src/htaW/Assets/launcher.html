@@ -1,0 +1,343 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>htaW</title>
+<style>
+  body { padding: 0; }
+  .layout-fill > main { padding: 16px 20px 24px; }
+  header { display: flex; align-items: center; gap: 14px; padding: 16px 20px 4px; }
+  header img { width: 44px; height: 44px; }
+  header h1 { font-size: 22px; margin: 0; line-height: 1.1; }
+  header .muted { font-size: 12px; }
+  .card h2 { font-size: 15px; margin: 0 0 2px; }
+  .card > p.muted { margin-bottom: 10px; font-size: 13px; }
+  .card { margin-bottom: 10px; }
+  .row input[type="text"] { flex: 1; min-width: 160px; }
+  .status { display: inline-flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--htaw-fg-muted); flex: none; }
+  .dot.ok { background: #0f7b0f; }
+  .dot.warn { background: #c27c00; }
+  .result { margin-top: 10px; display: none; }
+  .result.show { display: flex; }
+  .path { font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; word-break: break-all; user-select: text; }
+  td { vertical-align: top; }
+  td.files { font-size: 12px; }
+  td.act { width: 1%; white-space: nowrap; text-align: right; }
+  td.act button + button { margin-left: 4px; }
+  tr.missing td:first-child { opacity: .55; }
+  .problem { color: #c42b1c; font-size: 12px; }
+  .empty { color: var(--htaw-fg-muted); padding: 6px 0; }
+  details summary { cursor: default; color: var(--htaw-fg-muted); margin-top: 8px; }
+  pre { white-space: pre; overflow-x: auto; font-size: 12px; margin-top: 8px; }
+  footer { text-align: center; font-size: 12px; padding: 8px 0 4px; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: 12px; padding: 8px 12px; border-radius: var(--htaw-radius);
+           background: var(--htaw-surface); border: 1px solid var(--htaw-border-strong); box-shadow: 0 4px 16px rgb(0 0 0 / .2);
+           display: none; user-select: text; }
+  #toast.show { display: block; }
+  #toast.error { border-left: 4px solid #c42b1c; }
+</style>
+</head>
+<body>
+<div class="layout-fill">
+  <header>
+    <img src="icon.png" alt="">
+    <div>
+      <h1>htaW</h1>
+      <div class="muted" data-t="tagline"></div>
+    </div>
+  </header>
+  <main>
+    <section class="card">
+      <h2 data-t="openTitle"></h2>
+      <p class="muted" data-t="openText"></p>
+      <div class="row">
+        <button class="primary" id="open" data-t="openButton"></button>
+        <input type="text" id="args" data-tp="argsHint" spellcheck="false">
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 data-t="devTitle"></h2>
+      <p class="muted" data-t="devText"></p>
+      <div class="row">
+        <button id="devFolder" data-t="devFolder"></button>
+        <button id="devFile" data-t="devFile"></button>
+      </div>
+      <div class="result row" id="devResult"><span class="muted" data-t="devStarted"></span> <span class="path" id="devPath"></span></div>
+      <div id="recentBox" style="margin-top:12px">
+        <div class="muted" data-t="recent"></div>
+        <table><tbody id="recent"></tbody></table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 data-t="packTitle"></h2>
+      <p class="muted" data-t="packText"></p>
+      <div class="row"><button id="pack" data-t="packButton"></button></div>
+      <div class="result row" id="packResult">
+        <span id="packInfo"></span>
+        <span style="flex:1"></span>
+        <button id="packRun" data-t="run"></button>
+        <button id="packReveal" data-t="reveal"></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 data-t="bundleTitle"></h2>
+      <p class="muted" data-t="bundleText"></p>
+      <div class="row">
+        <button id="bundleFolder" data-t="bundleFolder"></button>
+        <button id="bundleFile" data-t="bundleFile"></button>
+      </div>
+      <div class="result row" id="bundleResult">
+        <span id="bundleInfo"></span>
+        <span style="flex:1"></span>
+        <button id="bundleRun" data-t="run"></button>
+        <button id="bundleReveal" data-t="reveal"></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 data-t="assocTitle"></h2>
+      <p class="muted" data-t="assocText"></p>
+      <div class="row">
+        <span class="status"><span class="dot" id="assocDot"></span><span id="assocState"></span></span>
+        <span style="flex:1"></span>
+        <button id="register" data-t="register"></button>
+        <button id="unregister" data-t="unregister"></button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 data-t="trustTitle"></h2>
+      <p class="muted" data-t="trustText"></p>
+      <table>
+        <thead><tr><th data-t="colApp"></th><th data-t="colPerms"></th><th></th></tr></thead>
+        <tbody id="trust"></tbody>
+      </table>
+      <div class="row" style="margin-top:10px"><span style="flex:1"></span><button id="forgetAll" data-t="forgetAll"></button></div>
+    </section>
+
+    <section class="card">
+      <h2 data-t="aboutTitle"></h2>
+      <div class="column" style="gap:4px">
+        <div><span class="muted" data-t="version"></span> <span id="version" class="selectable"></span></div>
+        <div><span class="muted" data-t="exe"></span> <span id="exe" class="path"></span></div>
+        <div><span class="muted" data-t="data"></span> <a id="dataDir" class="path"></a></div>
+      </div>
+      <details><summary data-t="cli"></summary><pre id="help"></pre></details>
+    </section>
+
+    <footer class="muted">© 2026 XWolfOverride · <span data-t="license"></span></footer>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const T = {
+  es: {
+    tagline: "Aplicaciones de escritorio hechas con HTML",
+    openTitle: "Abrir una aplicación", openText: "Elige un archivo .htaw para ejecutarlo. El panel se cierra al abrirlo.",
+    openButton: "Abrir .htaw…", argsHint: "Argumentos para la app (opcional)",
+    devTitle: "Modo desarrollo", devText: "Abre una carpeta o un archivo con DevTools y recarga automática al guardar. Usa también los argumentos de arriba.",
+    devFolder: "Carpeta…", devFile: "Archivo…", devStarted: "Abierto en modo desarrollo:",
+    recent: "Recientes", open: "Abrir", remove: "Quitar", missing: "ya no existe",
+    packTitle: "Crear un .htaw", packText: "Valida el manifiesto (htaw.json) de una carpeta y la empaqueta en un único archivo .htaw.",
+    packButton: "Empaquetar carpeta…", packed: (n) => `Creado con ${n} archivo${n === 1 ? "" : "s"}:`,
+    run: "Ejecutar", reveal: "Mostrar en la carpeta",
+    bundleTitle: "Crear un ejecutable portable", bundleText: "Une htaW y una aplicación (carpeta, .htaw o HTML) en un solo programa que se puede copiar y ejecutar sin instalar nada. Si la app declara un icono, el programa lo lleva.",
+    bundleFolder: "Desde carpeta…", bundleFile: "Desde archivo…",
+    bundled: (mb, icon) => `Creado (${mb} MB${icon ? ", con el icono de la app" : ""}):`,
+    assocTitle: "Extensión .htaw", assocText: "Asocia los archivos .htaw a este htaW para abrirlos con doble clic (solo para tu usuario, sin administrador).",
+    register: "Asociar", unregister: "Quitar asociación",
+    st_none: "Sin asociar", st_this: "Asociada a este htaW", st_other: "Asociada a otra copia de htaW:",
+    st_foreign: "Asociada a otro programa:", st_unsupported: "No disponible en este sistema",
+    trustTitle: "Permisos recordados", trustText: "Aplicaciones a las que ya diste permiso. Al olvidarlas, se volverá a preguntar la próxima vez.",
+    colApp: "Aplicación", colPerms: "Permisos", forget: "Olvidar", forgetAll: "Olvidar todo", sure: "¿Seguro?",
+    noTrust: "No hay ninguna aplicación recordada.", noPerms: "ninguno",
+    license: "Software libre con licencia MIT",
+    aboutTitle: "Acerca de", version: "Versión", exe: "Programa", data: "Datos", cli: "Línea de comandos",
+  },
+  en: {
+    tagline: "Desktop applications made with HTML",
+    openTitle: "Open an application", openText: "Choose a .htaw file to run it. The panel closes when it opens.",
+    openButton: "Open .htaw…", argsHint: "Arguments for the app (optional)",
+    devTitle: "Development mode", devText: "Opens a folder or a file with DevTools and automatic reload on save. It also uses the arguments above.",
+    devFolder: "Folder…", devFile: "File…", devStarted: "Opened in development mode:",
+    recent: "Recent", open: "Open", remove: "Remove", missing: "no longer exists",
+    packTitle: "Create a .htaw", packText: "Validates the manifest (htaw.json) of a folder and packs it into a single .htaw file.",
+    packButton: "Pack folder…", packed: (n) => `Created with ${n} file${n === 1 ? "" : "s"}:`,
+    run: "Run", reveal: "Show in folder",
+    bundleTitle: "Create a portable executable", bundleText: "Joins htaW and an application (folder, .htaw or HTML) into a single program that can be copied and run without installing anything. If the app declares an icon, the program carries it.",
+    bundleFolder: "From folder…", bundleFile: "From file…",
+    bundled: (mb, icon) => `Created (${mb} MB${icon ? ", with the app icon" : ""}):`,
+    assocTitle: ".htaw extension", assocText: "Associates .htaw files with this htaW to open them with a double click (only for your user, no administrator needed).",
+    register: "Associate", unregister: "Remove association",
+    st_none: "Not associated", st_this: "Associated with this htaW", st_other: "Associated with another copy of htaW:",
+    st_foreign: "Associated with another program:", st_unsupported: "Not available on this system",
+    trustTitle: "Remembered permissions", trustText: "Applications you already gave permission to. If you forget them, you will be asked again next time.",
+    colApp: "Application", colPerms: "Permissions", forget: "Forget", forgetAll: "Forget all", sure: "Sure?",
+    noTrust: "No application is remembered.", noPerms: "none",
+    license: "Free software under the MIT license",
+    aboutTitle: "About", version: "Version", exe: "Program", data: "Data", cli: "Command line",
+  },
+};
+let L = T.en;
+const $ = (id) => document.getElementById(id);
+const call = (m, p) => glue.call(m, p);
+
+function translate() {
+  for (const e of document.querySelectorAll("[data-t]")) e.textContent = L[e.dataset.t];
+  for (const e of document.querySelectorAll("[data-tp]")) e.placeholder = L[e.dataset.tp];
+}
+
+let toastTimer;
+function toast(text, error) {
+  const t = $("toast");
+  t.textContent = text;
+  t.className = "show" + (error ? " error" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.className = ""), error ? 8000 : 4000);
+}
+
+// Ejecuta una accion del host; los errores se muestran y los botones no se pulsan dos veces.
+async function act(button, fn) {
+  button.disabled = true;
+  try { return await fn(); }
+  catch (e) { toast(e.message, true); }
+  finally { button.disabled = false; }
+}
+
+function render(s) {
+  L = s.spanish ? T.es : T.en;
+  document.documentElement.lang = s.spanish ? "es" : "en";
+  document.documentElement.dataset.os = s.os;
+  translate();
+  $("version").textContent = s.version;
+  $("exe").textContent = s.exe;
+  $("dataDir").textContent = s.dataDir;
+  $("help").textContent = s.help;
+
+  const st = s.association;
+  $("assocState").textContent = L["st_" + st] + (s.associationTarget && st !== "this" ? " " + s.associationTarget : "");
+  $("assocDot").className = "dot" + (st === "this" ? " ok" : st === "other" || st === "foreign" ? " warn" : "");
+  $("register").disabled = st === "this" || st === "unsupported";
+  $("unregister").disabled = st === "none" || st === "foreign" || st === "unsupported";
+
+  const body = $("trust");
+  body.replaceChildren();
+  if (s.apps.length === 0) {
+    const tr = body.insertRow(), td = tr.insertCell();
+    td.colSpan = 3; td.className = "empty"; td.textContent = L.noTrust;
+  }
+  for (const a of s.apps) {
+    const tr = body.insertRow();
+    const app = tr.insertCell();
+    app.textContent = a.id;
+    for (const f of a.files) {
+      const d = document.createElement("div");
+      d.className = "path muted"; d.textContent = f;
+      app.append(d);
+    }
+    tr.insertCell().textContent = a.permissions.length ? a.permissions.join(", ") : L.noPerms;
+    const act2 = tr.insertCell(); act2.className = "act";
+    const b = document.createElement("button");
+    b.textContent = L.forget;
+    b.onclick = () => act(b, async () => render(await call("launcher.forget", a.id)));
+    act2.append(b);
+  }
+  $("forgetAll").disabled = s.apps.length === 0;
+  renderRecent(s.recent);
+}
+
+function renderRecent(list) {
+  $("recentBox").style.display = list.length ? "" : "none";
+  const body = $("recent");
+  body.replaceChildren();
+  for (const r of list) {
+    const tr = body.insertRow();
+    if (!r.exists) tr.className = "missing";
+    const c = tr.insertCell();
+    c.append(document.createTextNode((r.isFolder ? "📁 " : "📄 ") + r.name));
+    const p = document.createElement("div");
+    p.className = "path muted"; p.textContent = r.path + (r.exists ? "" : " — " + L.missing);
+    c.append(p);
+    if (r.problem) { const e = document.createElement("div"); e.className = "problem"; e.textContent = r.problem; c.append(e); }
+    const a = tr.insertCell(); a.className = "act";
+    const open = document.createElement("button");
+    open.textContent = L.open; open.disabled = !r.exists;
+    open.onclick = () => act(open, async () => { render(await call("launcher.devRecent", { path: r.path, args: $("args").value })); });
+    const rm = document.createElement("button");
+    rm.textContent = L.remove;
+    rm.onclick = () => act(rm, async () => render(await call("launcher.devForget", r.path)));
+    a.append(open, rm);
+  }
+}
+
+// Al volver al panel se refresca: los recientes los anota el proceso de la app al abrirse.
+const refresh = () => call("launcher.state").then(render, () => {});
+addEventListener("focus", refresh);
+
+$("open").onclick = (e) => act(e.target, () => call("launcher.open", { args: $("args").value }));
+
+async function dev(button, folder) {
+  const path = await act(button, () => call("launcher.dev", { folder, args: $("args").value }));
+  if (path) { $("devPath").textContent = path; $("devResult").classList.add("show"); setTimeout(refresh, 1500); }
+}
+$("devFolder").onclick = (e) => dev(e.target, true);
+$("devFile").onclick = (e) => dev(e.target, false);
+
+let packed = null;
+$("pack").onclick = (e) => act(e.target, async () => {
+  const r = await call("launcher.pack");
+  if (!r) return;
+  packed = r.output;
+  $("packInfo").replaceChildren(L.packed(r.count) + " ", Object.assign(document.createElement("span"), { className: "path", textContent: r.output }));
+  $("packResult").classList.add("show");
+});
+$("packRun").onclick = (e) => act(e.target, () => call("launcher.open", { path: packed, args: $("args").value }));
+$("packReveal").onclick = (e) => act(e.target, () => call("launcher.reveal", packed));
+
+let bundled = null;
+async function bundle(button, folder) {
+  const r = await act(button, () => call("launcher.bundle", { folder }));
+  if (!r) return;
+  bundled = r.output;
+  $("bundleInfo").replaceChildren(L.bundled((r.size / 1048576).toFixed(1), r.iconSet) + " ",
+    Object.assign(document.createElement("span"), { className: "path", textContent: r.output }));
+  $("bundleResult").classList.add("show");
+  if (r.note) toast(r.note);
+}
+$("bundleFolder").onclick = (e) => bundle(e.target, true);
+$("bundleFile").onclick = (e) => bundle(e.target, false);
+$("bundleRun").onclick = (e) => act(e.target, () => call("launcher.runBundle"));
+$("bundleReveal").onclick = (e) => act(e.target, () => call("launcher.reveal", bundled));
+
+$("register").onclick = (e) => act(e.target, async () => render(await call("launcher.register", true)));
+$("unregister").onclick = (e) => act(e.target, async () => render(await call("launcher.register", false)));
+
+// Olvidar todo pide una segunda pulsacion en 3 s.
+let sureTimer;
+$("forgetAll").onclick = (e) => {
+  const b = e.target;
+  if (!b.dataset.sure) {
+    b.dataset.sure = "1"; b.textContent = L.sure;
+    sureTimer = setTimeout(() => { delete b.dataset.sure; b.textContent = L.forgetAll; }, 3000);
+    return;
+  }
+  clearTimeout(sureTimer); delete b.dataset.sure;
+  act(b, async () => render(await call("launcher.forget", null)));
+};
+
+$("dataDir").onclick = () => call("launcher.openData").catch((e) => toast(e.message, true));
+
+// Soltar un archivo no debe navegar fuera del panel.
+addEventListener("dragover", (e) => e.preventDefault());
+addEventListener("drop", (e) => e.preventDefault());
+
+call("launcher.state").then(render, (e) => toast(e.message, true));
+</script>
+</body>
+</html>

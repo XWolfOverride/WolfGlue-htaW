@@ -96,24 +96,30 @@ internal static partial class Strings
         Uso:
           htaw <archivo.htaw> [args...]     abre la aplicacion
           htaw --dev <carpeta|archivo>      modo desarrollo (DevTools, recarga al guardar)
+          htaw <carpeta|htaw.json>          igual que --dev (sirve arrastrar la carpeta sobre htaw)
           htaw pack <carpeta> [-o salida]   crea un .htaw (zip) y valida el manifiesto
+          htaw bundle <carpeta|archivo> [-o salida] [--base htaw]
+                                            crea un ejecutable portable con la app dentro
           htaw --register | --unregister    asocia (o no) la extension .htaw a htaW
           htaw --forget <archivo|id>        olvida los permisos concedidos
           htaw --version | --help
 
-        Sin argumentos, pide el archivo a abrir.
+        Sin argumentos, abre el panel de htaW con estas mismas acciones.
         """, """
         htaW: runs .htaw applications (HTML + desktop API).
 
         Usage:
           htaw <file.htaw> [args...]        open the application
           htaw --dev <folder|file>          development mode (DevTools, reload on save)
+          htaw <folder|htaw.json>           same as --dev (dragging the folder onto htaw works)
           htaw pack <folder> [-o output]    create a .htaw (zip) and validate the manifest
+          htaw bundle <folder|file> [-o output] [--base htaw]
+                                            create a portable executable with the app inside
           htaw --register | --unregister    associate (or not) the .htaw extension with htaW
           htaw --forget <file|id>           forget the granted permissions
           htaw --version | --help
 
-        Without arguments, it asks for the file to open.
+        Without arguments, it opens the htaW panel with these same actions.
         """);
     public static string UnknownOption(string o) => T($"Opcion desconocida: {o} (htaw --help)", $"Unknown option: {o} (htaw --help)");
     public static string MissingArgument(string o) => T($"Falta el argumento de {o}", $"Missing argument for {o}");
@@ -124,4 +130,19 @@ internal static partial class Strings
     public static string Forgotten(int n) => T($"Entradas olvidadas: {n}", $"Entries forgotten: {n}");
     public static string ChooseTitle => T("Abrir aplicacion htaW", "Open htaW application");
     public static string ChooseFilter => T("Aplicaciones htaW", "htaW applications");
+    public static string LauncherDevFolder => T("Carpeta de la app en desarrollo", "Folder of the app in development");
+    public static string LauncherDevFile => T("Archivo de la app en desarrollo", "File of the app in development");
+    public static string LauncherPackFolder => T("Carpeta a empaquetar", "Folder to pack");
+    public static string LauncherPackSave => T("Guardar el .htaw", "Save the .htaw");
+    public static string IconNotFound(string i) => T($"No se encuentra el icono \"{i}\".", $"Icon \"{i}\" not found.");
+    public static string IconTooBig(string i, int kb) => T($"El icono \"{i}\" pasa de {kb} KB.", $"Icon \"{i}\" is larger than {kb} KB.");
+    public static string IconBadFormat(string i) => T($"El icono \"{i}\" no es un .png ni un .ico valido.", $"Icon \"{i}\" is not a valid .png or .ico.");
+    public static string IconFallback => T(" Se usa el de htaW.", " The htaW icon is used.");
+    public static string BundleSameFile(string f) => T($"La salida no puede ser el origen ni la base: {f}", $"The output cannot be the source or the base: {f}");
+    public static string BundleIconWindowsOnly => T("El icono del ejecutable de Windows solo se puede poner desde Windows; el resultado lleva el de htaW.", "The Windows executable icon can only be set from Windows; the result keeps the htaW icon.");
+    public static string BundleNeedsAot => T("Para crear un ejecutable hace falta el htaw publicado (publish.cmd o build.ps1), o indicarlo con --base <htaw.exe>.", "Creating an executable needs the published htaw (publish.cmd or build.ps1), or pass it with --base <htaw.exe>.");
+    public static string Bundled(string f, long size, bool icon) => T($"Creado {f} ({size / 1024.0 / 1024.0:0.0} MB{(icon ? ", con el icono de la app" : "")})", $"Created {f} ({size / 1024.0 / 1024.0:0.0} MB{(icon ? ", with the app icon" : "")})");
+    public static string LauncherBundleSave => T("Guardar el ejecutable", "Save the executable");
+    public static string LauncherBundleFile => T("Aplicacion a convertir en ejecutable", "Application to turn into an executable");
+    public static string ExeFilter => T("Programas", "Programs");
 }

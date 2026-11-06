@@ -117,6 +117,21 @@ public sealed class TrustStore
         Save();
     }
 
+    /// <summary>Archivos aceptados (hash -> entrada), para listarlos.</summary>
+    public IReadOnlyDictionary<string, Entry> Files => _data.Files;
+
+    /// <summary>Apps recordadas (id -> permisos), para listarlas.</summary>
+    public IReadOnlyDictionary<string, string[]> Apps => _data.Apps;
+
+    /// <summary>Olvida todo. Devuelve cuantas entradas se borraron.</summary>
+    public int ForgetAll()
+    {
+        int n = _data.Files.Count + _data.Apps.Count;
+        _data = new();
+        if (n > 0) Save();
+        return n;
+    }
+
     /// <summary>Olvida por hash o por id. Devuelve cuantas entradas se borraron.</summary>
     public int Forget(string? hash, string? id)
     {

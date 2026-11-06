@@ -37,6 +37,11 @@ public sealed class GlueAppOptions
     /// </summary>
     public bool NativeServicesInWeb { get; init; } = true;
 
+    /// <summary>
+    /// Icono (bytes de un .ico o un .png) de las ventanas que no fijan el suyo. Si es null, el del ejecutable.
+    /// </summary>
+    public byte[]? Icon { get; init; }
+
     /// <summary>Color inicial de las ventanas que no fijan el suyo (ver <see cref="GlueWindowOptions.Background"/>).</summary>
     public GlueBackground? Background { get; init; }
 

@@ -14,6 +14,9 @@ internal static partial class Program
     [STAThread]
     private static int Main(string[] argv)
     {
+        // Ejecutable portable: lleva una app dentro y todos los argumentos son de la app (sin linea de comandos de htaW).
+        if (EmbeddedApp.Find(Environment.ProcessPath) is { } embedded) return RunEmbedded(embedded, argv);
+
         var cmd = CliCommand.Parse(argv);
         try
         {
@@ -46,6 +49,11 @@ internal static partial class Program
                     var (output, count) = Packer.Pack(cmd.Path!, cmd.Output);
                     Console.WriteLine(Strings.Packed(output, count));
                     return 0;
+                case CliAction.Bundle:
+                    var b = Bundler.Bundle(cmd.Path!, cmd.Output, cmd.Base);
+                    if (b.IconNote is not null) Console.Error.WriteLine(b.IconNote);
+                    Console.WriteLine(Strings.Bundled(b.Output, b.Size, b.IconSet));
+                    return 0;
                 case CliAction.Register:
                     if (!FileAssociation.Register(Environment.ProcessPath!)) { Console.Error.WriteLine(Strings.RegisterUnsupported); return 1; }
                     Console.WriteLine(Strings.Registered);
@@ -69,39 +77,34 @@ internal static partial class Program
         }
     }
 
-    private static string Version =>
+    internal static string Version =>
         typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "?";
+
+    private static int RunEmbedded(EmbeddedApp app, string[] args)
+    {
+        var exe = Environment.ProcessPath!;
+        try
+        {
+            using var pkg = HtawPackage.OpenEmbedded(exe, app);
+            return new HtawHost(pkg, args, dev: false).Run();
+        }
+        catch (Exception e) when (e is HtawFormatException or InvalidDataException or IOException)
+        {
+            GlueApp.ShowError(Path.GetFileNameWithoutExtension(exe), Strings.CannotOpen(exe) + "\n\n" + e.Message);
+            return 1;
+        }
+    }
 
     private static int RunApp(string path, string[] args, bool dev)
     {
         using var pkg = HtawPackage.Open(path, allowFolder: dev);
+        // Solo se anota lo que se abre bien: la lista del panel no se llena de rutas que fallan.
+        if (dev) new DevRecents(DevRecents.DefaultFile).Add(pkg.SourcePath);
         return new HtawHost(pkg, args, dev).Run();
     }
 
-    /// <summary>Sin argumentos: pide el archivo y se relanza con el.</summary>
-    private static int Choose()
-    {
-        var app = new GlueApp(new GlueAppOptions
-        {
-            AppId = "htaW",
-            Host = "htaw.local",
-            QuitMode = GlueQuitMode.Explicit,
-            NativeServicesInWeb = false,
-            DataFolder = Path.Combine(HtawPaths.Root, "WebView2"),
-        });
-        app.InvokeAsync(async () =>
-        {
-            var files = await app.Native.Dialogs.OpenFileAsync(new FileDialogOptions
-            {
-                Title = Strings.ChooseTitle,
-                Filters = [new FileFilter(Strings.ChooseFilter, "htaw")],
-            });
-            if (files is { Length: > 0 })
-                Process.Start(new ProcessStartInfo(Environment.ProcessPath!) { ArgumentList = { files[0] }, UseShellExecute = false });
-            app.Quit(0);
-        });
-        return app.Run();
-    }
+    /// <summary>Sin argumentos: panel con las acciones de la linea de comandos.</summary>
+    private static int Choose() => new Launcher().Run();
 
     private static int Forget(string target)
     {

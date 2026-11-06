@@ -25,8 +25,10 @@ lo soporta); imagen en el portapapeles.
 5. ⏳ Hechos `--register`, `--dev`, `pack`, `--forget`; falta la instancia única.
 6. ✅ `build.ps1`, `run.cmd`, `publish.cmd` (`build.sh` llega con los backends de Linux y macOS).
 
-Pendiente de la fase 2: instancia única (`singleInstance`) y evento `secondInstance`; icono de la app en la
-ventana (`icon`); `htaw.window.onClosing`; ventana de apps recientes; marco `none`. Sin probar a mano:
+Pendiente de la fase 2: instancia única (`singleInstance`) y evento `secondInstance`;
+`htaw.window.onClosing`; ventana de apps recientes (en el panel); marco `none`. Hecho: panel de htaW sin argumentos,
+`icon` en barra de título y de tareas, ejecutable portable (`bundle`) con icono, carpeta o `htaw.json` como modo desarrollo y recientes en el panel. Anotado: integración de `--dev` con los menús de cada sistema. Evaluado: icono de cada `.htaw` en el
+explorador (descartado por ahora) y portables en Linux y macOS (HTAW-INTEGRACION.md). Sin probar a mano:
 `--register` (cambia el registro del usuario), `fs.watch`, `spawn`, `http.fetch`.
 
 ## Fase 3: macOS
@@ -42,6 +44,11 @@ Backend GTK3 + WebKitGTK 4.1, tema por portal, CSS de Linux, `.desktop`/MIME, `b
 - Elementos propios en la barra de título (ver la sección siguiente).
 - Menús nativos, bandeja del sistema, notificaciones.
 - Evaluar GTK4 + WebKitGTK 6.0.
+
+## Fase 6: otras plataformas (evaluado, sin implementar)
+Ver HTAW-OTRAS-PLATAFORMAS.md. Orden propuesto: portables cruzados de escritorio (`bundle --target` y carpeta
+`runtimes/`, junto con los backends de Linux y macOS); htaW de Android (solo ejecución) y generación de APK desde
+cualquier sistema; iOS después de macOS, solo ejecución y con distribución de desarrollo.
 
 ## Barra de título con elementos propios (diseño, sin implementar)
 
@@ -80,6 +87,6 @@ aplicaciones modernas del sistema, con **la misma definición en todos los siste
 
 ## Decisiones pendientes
 - API C# exacta de `GlueApp` / `GlueWindow` (se fija en la fase 1).
-- Formato del icono de app (`.png` único convertido en cada SO o un icono por SO).
+- Icono de app: decidido `.png` o `.ico` en el manifiesto (en macOS se convertirá a `.icns` con PNG dentro).
 - Si htaW ofrece una API de base de datos local (por ejemplo SQLite) o se deja a IndexedDB.
 - Valores exactos del CSS por sistema.

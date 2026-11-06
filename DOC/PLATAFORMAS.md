@@ -17,7 +17,10 @@ La web se pinta con dos motores distintos (Chromium y WebKit), así que hay que 
 ### Ventana
 - `RegisterClassExW` + `CreateWindowExW`, con un `WndProc` `[UnmanagedCallersOnly]`.
 - Bucle `GetMessageW` / `TranslateMessage` / `DispatchMessageW`.
-- Icono desde los recursos del ejecutable o desde un archivo (`.ico` / `.png` convertido).
+- Icono: el de la clase de ventana sale de los recursos del ejecutable (`IDI_APPLICATION`). Con `Icon` (ventana o app),
+  `WM_SETICON` con dos `HICON` a los tamaños del sistema para el DPI de la ventana (`SM_CXSMICON` y `SM_CXICON`), que
+  se rehacen en `WM_DPICHANGED`. `CreateIconFromResourceEx` crea el `HICON` tanto de una imagen de `.ico` (la menor que
+  llegue al tamaño) como de un `.png` entero, y lo escala (`WinIcon.cs`).
 
 ### WebView2 con Native AOT
 - El interop del paquete oficial usa `ComImport`, que no es compatible con AOT. Las interfaces

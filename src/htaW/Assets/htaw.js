@@ -42,7 +42,7 @@
   const themeListeners = new Set();
   glue.on("glue.theme", (t) => {
     Object.assign(theme, t);
-    if (init.theme) applyTheme(t);
+    applyTheme(t); // solo actua si esta el <style id="htaw-theme"> (theme "native")
     for (const fn of [...themeListeners]) { try { fn(theme); } catch (e) { console.error(e); } }
   });
 

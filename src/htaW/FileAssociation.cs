@@ -4,6 +4,9 @@ using Microsoft.Win32;
 
 namespace HtaW;
 
+/// <summary>Estado de la asociacion: sin asociar, a este htaw, a otra copia de htaw, a otro programa.</summary>
+public enum AssociationState { None, This, Other, Foreign, Unsupported }
+
 /// <summary>Asociacion de la extension .htaw, siempre por usuario (sin administrador).</summary>
 internal static partial class FileAssociation
 {
@@ -21,6 +24,41 @@ internal static partial class FileAssociation
         if (!OperatingSystem.IsWindows()) return false;
         UnregisterWindows();
         return true;
+    }
+
+    /// <summary>Estado de la asociacion de .htaw para este usuario.</summary>
+    public static (AssociationState state, string? exe) Status(string exe)
+    {
+        if (!OperatingSystem.IsWindows()) return (AssociationState.Unsupported, null);
+        return StatusWindows(exe);
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static (AssociationState, string?) StatusWindows(string exe)
+    {
+        using var ext = Registry.CurrentUser.OpenSubKey(@"Software\Classes\.htaw");
+        var prog = ext?.GetValue("") as string;
+        if (prog is null) return (AssociationState.None, null);
+        if (prog != ProgId) return (AssociationState.Foreign, prog);
+        using var cmd = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + ProgId + @"\shell\open\command");
+        var target = CommandExe(cmd?.GetValue("") as string);
+        if (target is null) return (AssociationState.None, null);
+        return string.Equals(Path.GetFullPath(target), Path.GetFullPath(exe), StringComparison.OrdinalIgnoreCase)
+            ? (AssociationState.This, target) : (AssociationState.Other, target);
+    }
+
+    /// <summary>Ejecutable de una orden <c>"ruta" "%1" %*</c> (o sin comillas).</summary>
+    internal static string? CommandExe(string? command)
+    {
+        if (string.IsNullOrWhiteSpace(command)) return null;
+        command = command.Trim();
+        if (command[0] == '"')
+        {
+            var end = command.IndexOf('"', 1);
+            return end > 1 ? command[1..end] : null;
+        }
+        var sp = command.IndexOf(' ');
+        return sp < 0 ? command : command[..sp];
     }
 
     [SupportedOSPlatform("windows")]

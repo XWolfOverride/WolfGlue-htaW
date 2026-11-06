@@ -123,6 +123,13 @@ internal static unsafe partial class Win32
     [LibraryImport("user32.dll")]
     public static partial nint LoadCursorW(nint instance, nint name);
 
+    public const uint WM_SETICON = 0x0080;
+    public const int SM_CXICON = 11, SM_CXSMICON = 49;
+
+    [LibraryImport("user32.dll")]
+    public static partial nint SendMessageW(nint hwnd, uint msg, nint wParam, nint lParam);
+    [LibraryImport("user32.dll")]
+    public static partial int GetSystemMetricsForDpi(int index, uint dpi);
     [LibraryImport("user32.dll")]
     public static partial nint LoadIconW(nint instance, nint name);
 

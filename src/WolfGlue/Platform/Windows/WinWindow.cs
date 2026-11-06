@@ -51,10 +51,42 @@ internal sealed class WinWindow : IPlatformWindow
         _container = Win32.CreateWindowExW(0, "STATIC", null, Win32.WS_CHILD | Win32.WS_CLIPCHILDREN,
             0, 0, 0, 0, Hwnd, 0, platform.HInstance, 0);
         ApplyTheme();
+        ApplyIcon();
     }
 
     private readonly nint _container;
     private bool _contentShown;
+    private nint _iconSmall, _iconBig;
+
+    /// <summary>
+    /// Icono propio (opcion de la ventana o de la app) a los tamanos del sistema para el DPI actual: pequeno para la barra
+    /// de titulo y grande para Alt+Tab y la barra de tareas. Sin icono propio queda el de la clase (el del ejecutable).
+    /// </summary>
+    private void ApplyIcon()
+    {
+        if (_host.Icon is not { } data) return;
+        var dpi = Win32.GetDpiForWindow(Hwnd);
+        if (dpi == 0) dpi = 96;
+        var small = WinIcon.Create(data, Win32.GetSystemMetricsForDpi(Win32.SM_CXSMICON, dpi));
+        var big = WinIcon.Create(data, Win32.GetSystemMetricsForDpi(Win32.SM_CXICON, dpi));
+        if (small == 0 || big == 0)
+        {
+            if (small != 0) WinIcon.DestroyIcon(small);
+            if (big != 0) WinIcon.DestroyIcon(big);
+            return;
+        }
+        Win32.SendMessageW(Hwnd, Win32.WM_SETICON, 0 /* ICON_SMALL */, small);
+        Win32.SendMessageW(Hwnd, Win32.WM_SETICON, 1 /* ICON_BIG */, big);
+        DestroyIcons();
+        (_iconSmall, _iconBig) = (small, big);
+    }
+
+    private void DestroyIcons()
+    {
+        if (_iconSmall != 0) WinIcon.DestroyIcon(_iconSmall);
+        if (_iconBig != 0) WinIcon.DestroyIcon(_iconBig);
+        _iconSmall = _iconBig = 0;
+    }
 
     // ------------------------------------------------------------- IPlatformWindow
     /// <summary>
@@ -409,6 +441,7 @@ internal sealed class WinWindow : IPlatformWindow
             {
                 var r = (RECT*)lParam;
                 Win32.SetWindowPos(hwnd, 0, r->Left, r->Top, r->Width, r->Height, Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
+                ApplyIcon();
                 return 0;
             }
 
@@ -465,6 +498,7 @@ internal sealed class WinWindow : IPlatformWindow
                 _controller = null;
                 _webview = null;
                 Windows.Remove(hwnd);
+                DestroyIcons();
                 _host.OnClosed();
                 return 0;
         }

@@ -74,6 +74,8 @@ internal interface IWindowHost
     IReadOnlyList<string> ExtraScripts { get; }
     /// <summary>Color de fondo inicial resuelto (opcion, theme-color, app, sistema).</summary>
     GlueBackground Background { get; }
+    /// <summary>Icono (.ico o .png) de la ventana o de la app; null = el del ejecutable.</summary>
+    byte[]? Icon { get; }
     void OnWebViewReady();
     void OnWebMessage(string json, string source);
     /// <summary>Devuelve false para cancelar el cierre.</summary>

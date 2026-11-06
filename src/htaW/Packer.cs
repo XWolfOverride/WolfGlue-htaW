@@ -13,23 +13,31 @@ public static class Packer
     {
         folder = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         // Valida manifiesto y entrada exactamente como lo hara htaW al abrirlo.
-        using (HtawPackage.Open(folder, allowFolder: true)) { }
+        // El icono declarado tiene que poder usarse: al abrir solo es un aviso, al empaquetar es un error.
+        using (var pkg = HtawPackage.Open(folder, allowFolder: true))
+            if (pkg.IconProblem is { } problem) throw new HtawFormatException(problem);
 
         output = Path.GetFullPath(output ?? folder + ".htaw");
         var tmp = output + ".tmp";
-        int count = 0;
-        using (var zip = ZipFile.Open(tmp, ZipArchiveMode.Create))
-        {
-            foreach (var file in Files(folder).Order(StringComparer.Ordinal))
-            {
-                var full = Path.Combine(folder, file);
-                if (Path.GetFullPath(full).Equals(output, StringComparison.OrdinalIgnoreCase)) continue;
-                zip.CreateEntryFromFile(full, file, CompressionLevel.Optimal);
-                count++;
-            }
-        }
+        int count;
+        using (var file = File.Create(tmp)) count = WriteZip(folder, file, output);
         File.Move(tmp, output, true);
         return (output, count);
+    }
+
+    /// <summary>Escribe el zip de <paramref name="folder"/> (validada antes) y devuelve el numero de archivos.</summary>
+    internal static int WriteZip(string folder, Stream output, string? skip = null)
+    {
+        int count = 0;
+        using var zip = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
+        foreach (var file in Files(folder).Order(StringComparer.Ordinal))
+        {
+            var full = Path.Combine(folder, file);
+            if (skip is not null && Path.GetFullPath(full).Equals(skip, StringComparison.OrdinalIgnoreCase)) continue;
+            zip.CreateEntryFromFile(full, file, CompressionLevel.Optimal);
+            count++;
+        }
+        return count;
     }
 
     /// <summary>Rutas relativas con <c>/</c>, sin carpetas de herramientas ni otros .htaw.</summary>

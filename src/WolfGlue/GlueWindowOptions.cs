@@ -25,6 +25,12 @@ public sealed class GlueWindowOptions
     public bool Maximized { get; set; }
     public bool AlwaysOnTop { get; set; }
 
+    /// <summary>
+    /// Icono de la barra de titulo y de tareas: bytes de un .ico (se elige el tamano mas cercano) o un .png (se escala).
+    /// Si es null, <see cref="GlueAppOptions.Icon"/> o el del ejecutable.
+    /// </summary>
+    public byte[]? Icon { get; set; }
+
     /// <summary>Ventana duena: esta ventana queda siempre encima de ella y se minimiza con ella.</summary>
     public GlueWindow? Owner { get; set; }
 

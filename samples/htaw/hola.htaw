@@ -7,6 +7,7 @@
     "id": "wolfglue.ejemplo.hola",
     "name": "Hola htaW",
     "version": "1.0.0",
+    "icon": "hola.ico",
     "window": { "width": 560, "height": 460, "minWidth": 420, "minHeight": 320 },
     "permissions": ["dialog", "clipboard", { "shell.exec": ["git"] }]
   }

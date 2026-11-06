@@ -6,7 +6,8 @@
 {
   "id": "wolfglue.ejemplo.markdown",
   "name": "Markdown preview",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "icon": "markdown.ico",
   "window": { "width": 1100, "height": 720, "minWidth": 600, "minHeight": 400 },
   "permissions": ["fs", "dialog", "clipboard"]
 }
@@ -22,7 +23,6 @@ body{padding:0;display:flex;flex-direction:column;}
  min-height:0;
  display:flex;
  flex-direction:row;
- gap:8px;
  padding:8px;
 }
 #mdp .col{
@@ -44,6 +44,29 @@ body{padding:0;display:flex;flex-direction:column;}
 }
 #mdp .pane.grow{flex:1 1 0;}
 #mdp .pane.css{flex:0 0 28%;}
+/* Panel de estilo plegado: solo su barra */
+#mdp .pane.css.collapsed{flex:0 0 auto;}
+#mdp .pane.css.collapsed textarea,#mdp .pane.css.collapsed #cssReset{display:none;}
+#mdp .toolbar .chev{min-width:28px;padding:2px 4px;}
+#mdp .css .t{cursor:pointer;}
+/* Separador arrastrable entre edicion y vista previa */
+#split{
+ flex:0 0 8px;
+ cursor:col-resize;
+ position:relative;
+ outline:none;
+}
+#split::after{
+ content:"";
+ position:absolute;
+ top:20%;bottom:20%;left:3px;
+ width:2px;
+ border-radius:1px;
+ background:transparent;
+}
+#split:hover::after,#split:focus-visible::after,body.dragging #split::after{background:var(--htaw-accent);}
+body.dragging{cursor:col-resize;user-select:none;}
+body.dragging iframe{pointer-events:none;}
 #mdp .toolbar{padding:4px 6px 4px 12px;gap:2px;}
 #mdp .toolbar .t{flex:1;font-weight:600;font-size:13px;color:var(--htaw-fg-muted);}
 #mdp .toolbar button{min-height:28px;padding:2px 10px;font-size:13px;}
@@ -76,6 +99,9 @@ body{padding:0;display:flex;flex-direction:column;}
 @media (orientation:portrait), (max-width:760px){
  #mdp{flex-direction:column;}
  #mdp .pane.css{flex-basis:25%;}
+ #split{cursor:row-resize;}
+ #split::after{top:3px;bottom:auto;left:20%;right:20%;width:auto;height:2px;}
+ body.dragging{cursor:row-resize;}
 }
 </style>
 </head>
@@ -86,14 +112,15 @@ body{padding:0;display:flex;flex-direction:column;}
    <div class="toolbar"><span class="t">Markdown</span><button id="mdNew" title="New document (Ctrl+N)">New</button><button id="mdOpen" title="Open a .md file (Ctrl+O)">Open…</button><button id="mdSave" title="Save (Ctrl+S)">Save</button><button id="mdSaveAs" title="Save as… (Ctrl+Shift+S)">Save as…</button></div>
    <textarea id="mdSrc" spellcheck="false"></textarea>
   </div>
-  <div class="pane css">
-   <div class="toolbar"><span class="t">Preview stylesheet (CSS)</span><button id="cssReset" title="Restore default stylesheet">Default</button></div>
+  <div class="pane css" id="cssPane">
+   <div class="toolbar"><button id="cssToggle" class="chev" title="Hide the stylesheet">▾</button><span class="t" id="cssTitle">Preview stylesheet (CSS)</span><button id="cssReset" title="Restore default stylesheet">Default</button></div>
    <textarea id="cssSrc" spellcheck="false"></textarea>
   </div>
  </div>
+ <div id="split" role="separator" aria-orientation="vertical" tabindex="0" title="Drag to resize · double-click to centre"></div>
  <div class="col">
   <div class="pane grow">
-   <div class="toolbar"><span class="t">HTML preview</span><button id="htmlCopy" title="Copy generated HTML to clipboard">Copy HTML</button><button id="htmlSave" title="Save as standalone .html">Save .html…</button></div>
+   <div class="toolbar"><span class="t">HTML preview</span><button id="pvTheme" title="Preview theme: follow the system, light or dark">Theme: Auto</button><button id="htmlCopy" title="Copy generated HTML to clipboard">Copy HTML</button><button id="htmlSave" title="Save as standalone .html">Save .html…</button></div>
    <iframe id="preview" title="preview"></iframe>
   </div>
  </div>
@@ -124,6 +151,22 @@ body{padding:0;display:flex;flex-direction:column;}
   "tr:nth-child(2n){background:#F6F8FA;}",
   "img{max-width:100%;}",
   "hr{border:0;border-top:1px solid #D8DEE4;}"
+ ].join("\n");
+
+ // Capa del modo oscuro de la vista previa: va DESPUES de la hoja del usuario y solo cambia colores, asi que sirve
+ // tambien con una hoja propia. No se incluye en el HTML exportado.
+ var DARK_CSS=[
+  ":root{color-scheme:dark;}",
+  "html,body{background:#0D1117;color:#E6EDF3;}",
+  "a{color:#4493F8;}",
+  "h1,h2{border-bottom-color:#30363D;}",
+  "code{background:#2D333B;}",
+  "pre{background:#161B22;}",
+  "pre code{background:none;}",
+  "blockquote{color:#9198A1;border-left-color:#3D444D;}",
+  "th,td{border-color:#3D444D;}",
+  "tr:nth-child(2n){background:#161B22;}",
+  "hr{border-top-color:#30363D;}"
  ].join("\n");
 
  var DEFAULT_MD=[
@@ -201,8 +244,74 @@ body{padding:0;display:flex;flex-direction:column;}
   if (!ready) return;
   var d=frame.contentDocument;
   d.getElementById("usercss").textContent=cssSrc.value;
+  applyPreviewTheme();
   d.body.innerHTML=toHtml(mdSrc.value);
  }
+
+ // ---------------------------------------------------------------- tema de la vista previa (auto / light / dark)
+ var THEMES=["auto","light","dark"], THEME_LABEL={auto:"Theme: Auto",light:"Theme: Light",dark:"Theme: Dark"};
+ var pvTheme="auto", pvBtn=document.getElementById("pvTheme");
+ function previewDark(){ return pvTheme==="dark" || (pvTheme==="auto" && htaw.theme.dark); }
+ function applyPreviewTheme(){
+  pvBtn.textContent=THEME_LABEL[pvTheme];
+  var dark=previewDark();
+  frame.style.background=dark?"#0D1117":"#FFF";
+  if (!ready) return;
+  frame.contentDocument.getElementById("darkcss").textContent=dark?DARK_CSS:"";
+ }
+ pvBtn.onclick=function(){
+  pvTheme=THEMES[(THEMES.indexOf(pvTheme)+1)%THEMES.length];
+  htaw.settings.set("previewTheme",pvTheme);
+  applyPreviewTheme();
+ };
+ htaw.theme.on("change",function(){ if (pvTheme==="auto") applyPreviewTheme(); });
+
+ // ---------------------------------------------------------------- separador entre edicion y vista previa
+ var mdp=document.getElementById("mdp"), split=document.getElementById("split"),
+     leftCol=mdp.querySelector(".col"), stacked=matchMedia("(orientation:portrait), (max-width:760px)"),
+     splitPct=50;
+ function setSplit(p,save){
+  splitPct=Math.round(Math.min(85,Math.max(15,p))*10)/10;
+  leftCol.style.flex="0 0 "+splitPct+"%";
+  split.setAttribute("aria-orientation",stacked.matches?"horizontal":"vertical");
+  if (save) htaw.settings.set("split",splitPct);
+ }
+ split.addEventListener("pointerdown",function(e){
+  if (e.button!==0) return;
+  split.setPointerCapture(e.pointerId);
+  document.body.classList.add("dragging");
+  e.preventDefault();
+ });
+ split.addEventListener("pointermove",function(e){
+  if (!split.hasPointerCapture(e.pointerId)) return;
+  var r=mdp.getBoundingClientRect();
+  setSplit(stacked.matches ? (e.clientY-r.top)/r.height*100 : (e.clientX-r.left)/r.width*100,false);
+ });
+ function endDrag(e){
+  if (!split.hasPointerCapture(e.pointerId)) return;
+  split.releasePointerCapture(e.pointerId);
+  document.body.classList.remove("dragging");
+  setSplit(splitPct,true);
+ }
+ split.addEventListener("pointerup",endDrag);
+ split.addEventListener("pointercancel",endDrag);
+ split.addEventListener("dblclick",function(){ setSplit(50,true); });
+ split.addEventListener("keydown",function(e){
+  var d={ArrowLeft:-2,ArrowUp:-2,ArrowRight:2,ArrowDown:2}[e.key];
+  if (d){ e.preventDefault(); setSplit(splitPct+d,true); }
+ });
+ stacked.addEventListener("change",function(){ setSplit(splitPct,false); });
+
+ // ---------------------------------------------------------------- panel de estilo plegable
+ var cssPane=document.getElementById("cssPane"), cssToggle=document.getElementById("cssToggle");
+ function setCssCollapsed(c,save){
+  cssPane.classList.toggle("collapsed",c);
+  cssToggle.textContent=c?"▸":"▾";
+  cssToggle.title=c?"Show the stylesheet":"Hide the stylesheet";
+  if (save) htaw.settings.set("cssCollapsed",c);
+ }
+ cssToggle.onclick=function(){ setCssCollapsed(!cssPane.classList.contains("collapsed"),true); };
+ document.getElementById("cssTitle").onclick=cssToggle.onclick;
 
  function schedule(){
   if (timer) clearTimeout(timer);
@@ -226,7 +335,7 @@ body{padding:0;display:flex;flex-direction:column;}
   });
   render();
  };
- frame.srcdoc="<!DOCTYPE html><html><head><meta charset='utf-8'><style id='usercss'></style></head><body></body></html>";
+ frame.srcdoc="<!DOCTYPE html><html><head><meta charset='utf-8'><style id='usercss'></style><style id='darkcss'></style></head><body></body></html>";
 
  mdSrc.addEventListener("input",function(){ dirty=true; updateStatus(); schedule(); });
  cssSrc.addEventListener("input",function(){ htaw.settings.set("css",cssSrc.value); schedule(); });
@@ -342,6 +451,11 @@ body{padding:0;display:flex;flex-direction:column;}
  // Archivo pasado como argumento (htaw markdown.htaw nota.md), o el ultimo abierto; si no, el ejemplo.
  run(async function(){
   cssSrc.value=await htaw.settings.get("css",DEFAULT_CSS);
+  pvTheme=await htaw.settings.get("previewTheme","auto");
+  if (THEMES.indexOf(pvTheme)<0) pvTheme="auto";
+  setSplit(await htaw.settings.get("split",50),false);
+  setCssCollapsed(!!(await htaw.settings.get("cssCollapsed",false)),false);
+  applyPreviewTheme();
   var initial=htaw.app.args[0] || await htaw.settings.get("last");
   if (initial && await htaw.fs.exists(initial)) await openPath(initial);
   else { mdSrc.value=DEFAULT_MD; updateStatus(); render(); }

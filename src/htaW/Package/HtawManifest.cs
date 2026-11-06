@@ -108,6 +108,11 @@ public static partial class ManifestReader
         if (w.Background is not null && !WolfGlue.GlueBackground.TryParse(w.Background, out _))
             throw new HtawFormatException(Strings.ManifestBadValue("window.background", w.Background));
         if (w.FadeIn is < 0 or > 2000) throw new HtawFormatException(Strings.ManifestBadValue("window.fadeIn", w.FadeIn.ToString()));
+        if (m.Icon is { Length: > 0 } icon)
+        {
+            if (IconSource.TryDataUrl(icon, out var data) ? data is null : Content.ContentPathCheck(icon) is null)
+                throw new HtawFormatException(Strings.ManifestBadValue("icon", icon.Length > 60 ? icon[..60] + "…" : icon));
+        }
         if (m.Entry is not null && Content.ContentPathCheck(m.Entry) is null)
             throw new HtawFormatException(Strings.ManifestBadValue("entry", m.Entry));
         foreach (var k in m.Unknown?.Keys ?? Enumerable.Empty<string>()) warnings.Add(Strings.WarnUnknownField(k));

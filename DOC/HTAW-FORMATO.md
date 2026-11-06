@@ -61,7 +61,7 @@ Mismo esquema en los dos formatos (en el HTML suelto `entry` no se usa).
   "name": "Mi App",                 // título por defecto de la ventana
   "version": "1.0.0",
   "entry": "index.html",            // solo zip
-  "icon": "icon.png",               // ruta relativa dentro de la app
+  "icon": "icon.png",               // .png o .ico: ruta relativa dentro de la app o data:...;base64
   "lang": "es",                     // opcional
   "window": {
     "width": 800, "height": 600,    // unidades lógicas
@@ -110,7 +110,13 @@ Implementado en `src/htaW/Package/` (`HtawManifest.cs`, `HtawPackage.cs`). Detal
 - Avisos (no error): campos desconocidos (también dentro de `window`), HTML sin bloque de manifiesto,
   `entry` en un HTML suelto (se ignora), `window.frame: "none"` (aún no soportado: se usa el marco del sistema).
 - El título de la ventana es `name`; si no hay, el `<title>` del documento.
-- `icon` y `singleInstance` se leen pero todavía no tienen efecto.
+- `icon`: `.png` o `.ico` (hasta 1 MB), como ruta relativa (dentro del zip, o junto al HTML / en la carpeta) o como
+  `data:image/png;base64,…` (útil en un HTML suelto para que siga siendo un solo archivo). Se usa en la barra de
+  título y en la de tareas de todas las ventanas de la app y, en un ejecutable portable, como icono del `.exe`. Una ruta
+  que sale de la raíz o un `data:` mal formado es error; un icono que no se encuentra o no es `.png`/`.ico` válido es un
+  aviso al abrir (queda el de htaW) y un error en `pack` y `bundle`. Para tamaños pequeños nítidos, mejor un `.ico`
+  con varios tamaños; un `.png` se escala (conviene cuadrado y de 256 px o más).
+- `singleInstance` se lee pero todavía no tiene efecto.
 - El prefijo de ruta `/_htaw/` está reservado para htaW (CSS y acceso binario a archivos): la app no debe usarlo.
 - Con `"theme": "native"` (por defecto), htaW inserta en cada respuesta HTML, justo tras `<head>`, su hoja
   `/_htaw/htaw.css` y un `<style id="htaw-theme">` con el tema real. Nunca antes del `<!doctype>`.

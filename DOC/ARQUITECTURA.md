@@ -10,12 +10,14 @@ WolfGlue/
 │  ├─ WolfGlue.Generators/      generador de código del bridge y de .d.ts (fase posterior)
 │  └─ htaW/                     ejecutable htaw (WinExe, Native AOT)
 │     ├─ Program.cs, Cli.cs     línea de comandos
-│     ├─ Package/               manifiesto, apertura de HTML/zip/carpeta, contenido
+│     ├─ Launcher.cs            panel sin argumentos (Assets/launcher.html)
+│     ├─ Package/               manifiesto, apertura de HTML/zip/carpeta/app incrustada, contenido, icono
 │     ├─ Security/              permisos, shell.exec, origen (MOTW) y trust.json
 │     ├─ Api/                   HtawHost (GlueApp + API htaw.* + CSS), procesos, tipos JSON
 │     ├─ Packer.cs              htaw pack
+│     ├─ Bundler.cs, ExeIcon.cs htaw bundle (ejecutable portable) e icono en los recursos del .exe
 │     ├─ FileAssociation.cs     --register / --unregister
-│     └─ Assets/                htaw.js, htaw.css (incrustados), htaw.d.ts
+│     └─ Assets/                htaw.js, htaw.css, launcher.html (incrustados), htaw.d.ts
 ├─ samples/Hola/                ejemplo C# de WolfGlue (llamadas, eventos, ventanas, modal, servicios nativos)
 ├─ samples/htaw/                hola.htaw y markdown.htaw (HTML suelto) y notas/ (carpeta para empaquetar)
 ├─ tests/
@@ -62,7 +64,7 @@ El backend se elige en tiempo de ejecución con `OperatingSystem.IsWindows()`, `
   añade un renderer y ~30 MB en total.
 
 ### GlueWindow (N por app)
-- Opciones: título, icono, tamaño (en unidades lógicas), mínimo/máximo, posición o centrado,
+- Opciones: título, icono (`Icon`: bytes de un `.ico` o `.png`; si no, `GlueAppOptions.Icon`; si no, el del ejecutable), tamaño (en unidades lógicas), mínimo/máximo, posición o centrado,
   redimensionable, sin marco, siempre encima, `Owner`, `Modal`.
 - Aparición: `Show()` muestra la ventana cuando la página inicial ha cargado o, como mucho, a los `ShowDelayMs`
   (500 ms por defecto), ya pintada con su **color de fondo inicial**; la página entra con un **fundido** corto

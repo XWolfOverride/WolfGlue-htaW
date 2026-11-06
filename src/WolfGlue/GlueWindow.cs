@@ -122,6 +122,7 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     bool IWindowHost.DevTools => App.Options.DevTools;
     IReadOnlyList<string> IWindowHost.ExtraScripts => App.Scripts;
     GlueBackground IWindowHost.Background => _background ??= ResolveBackground();
+    byte[]? IWindowHost.Icon => Options.Icon ?? App.Options.Icon;
 
     private GlueBackground? _background;
 
