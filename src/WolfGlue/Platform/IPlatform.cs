@@ -84,7 +84,7 @@ internal interface IWindowHost
     void OnDocumentTitleChanged(string title);
     ValueTask<GlueResponse> HandleRequestAsync(GlueRequest request);
     /// <summary>La pagina pide una ventana nueva (window.open / target=_blank).</summary>
-    void OnNewWindowRequested(string url, int? width, int? height);
-    /// <summary>Devuelve false para cancelar la navegacion.</summary>
-    bool OnNavigationStarting(string url);
+    void OnNewWindowRequested(string url, int? width, int? height, bool userInitiated);
+    /// <summary>Devuelve false para cancelar la navegacion. <paramref name="userInitiated"/>: la inicio el usuario (clic, tecla).</summary>
+    bool OnNavigationStarting(string url, bool userInitiated);
 }

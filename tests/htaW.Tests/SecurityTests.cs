@@ -19,6 +19,17 @@ public class PermissionTests
         Assert.Equal("PermissionDenied", e.Code);
     }
 
+    [Fact]
+    public void LinksAutoIsAKnownPermission()
+    {
+        var p = PermissionSet.FromManifest(Json.Array("""["links.auto"]"""));
+        Assert.True(p.Has("links.auto"));
+        Assert.False(p.IsDangerous);
+        Assert.Equal(["links.auto"], p.Canonical());
+        Assert.NotEqual("links.auto", Strings.PermissionLabel("links.auto"));
+        Assert.False(PermissionSet.FromManifest(Json.Array("""["shell.open"]""")).Has("links.auto"));
+    }
+
     [Theory]
     [InlineData("""[{"shell.exec": "*.*"}]""")]
     [InlineData("""[{"shell.exec": ""}]""")]

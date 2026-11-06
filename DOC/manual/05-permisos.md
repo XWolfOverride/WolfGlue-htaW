@@ -13,6 +13,7 @@ en `permissions`**. Pide solo lo que de verdad uses: es lo que verá el usuario 
 | `http` | `htaw.http.fetch` (sin CORS) | Conectarse a Internet sin restricciones |
 | `env` | `htaw.env` (variables de entorno y carpetas del usuario) | Leer variables de entorno y carpetas del usuario |
 | `shell.open` | `htaw.shell.open` y `htaw.shell.reveal` | Abrir archivos y direcciones con otras aplicaciones |
+| `links.auto` | Que los enlaces y `window.open` a otras webs se abran sin que el usuario haga clic (por ejemplo, desde un temporizador) | Abrir paginas web en el navegador sin que lo pidas |
 | `shell.exec` | `htaw.shell.exec` y `htaw.shell.spawn`, con lista de programas | Ejecutar estos programas: … |
 
 Sin permiso, siempre disponibles: `htaw.app`, `htaw.window`, `htaw.settings`, `htaw.theme`, `htaw.permissions`, el
@@ -68,7 +69,11 @@ Por eso conviene mantener el `id` estable entre versiones y no ampliar permisos 
 ## Las páginas de la app
 
 - Solo se cargan páginas de la propia app (su origen `https://<id>.htaw.local/`). Los enlaces y `window.open` a otras
-  webs se abren en el navegador del sistema (solo `http`, `https` y `mailto`); el resto se ignora.
+  webs se abren en el navegador del sistema (solo `http`, `https` y `mailto`); el resto se ignora. No hace falta ningún
+  permiso, pero **solo si los inicia el usuario** (un clic o una tecla): si la página navega a otra web por su
+  cuenta (`location.href = …` en un temporizador, un `click()` simulado), no se abre nada. Así una app no puede abrir
+  pestañas sin que el usuario lo pida. La app que lo necesite de verdad declara el permiso `links.auto`; y
+  `htaw.shell.open` (con su permiso) abre URLs siempre.
 - DevTools solo existen en modo desarrollo.
 - Cada app tiene su propio origen: su `localStorage`, IndexedDB y cookies no los ven las demás.
 - La ruta `/_htaw/` está reservada para htaW: no pongas archivos tuyos en una carpeta llamada `_htaw`.

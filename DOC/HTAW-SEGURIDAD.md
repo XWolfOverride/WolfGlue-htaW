@@ -16,6 +16,7 @@ Lo que no aparece en `permissions` del manifiesto, el bridge lo rechaza (`Permis
 | `http` | `htaw.http.fetch` sin CORS |
 | `env` | variables de entorno y carpetas del usuario |
 | `shell.open` | abrir URLs y archivos con la app por defecto, mostrar en el explorador |
+| `links.auto` | que los enlaces y `window.open` a otras webs se abran sin acción del usuario |
 | `shell.exec` | ejecutar procesos, con la lista de procesos permitidos |
 
 Sin permiso: `htaw.app`, `htaw.window`, `htaw.settings`, `htaw.theme`. Afectan solo a la propia app.
@@ -78,6 +79,7 @@ que declaran.
 ## Contenido web
 
 - Solo se cargan páginas del origen propio de la app. Las navegaciones externas (enlaces, `window.open`) se abren en el navegador del sistema solo si son `http`, `https` o `mailto`; el resto se descarta. Así una app sin `shell.open` no puede abrir archivos ni programas con un `file:` u otro protocolo.
+- Además, solo si las **inició el usuario** (clic o tecla, `IsUserInitiated` de WebView2); las que la página lanza por su cuenta se descartan, salvo con el permiso `links.auto` (`GlueAppOptions.ExternalLinksRequireUserAction = false`). Evita que una app abra pestañas sin parar. Para que el dato sea fiable, WolfGlue no usa `ExecuteScript` en la página (le daría activación de usuario, como un clic): el fundido de entrada se arranca con un mensaje del webview.
 - `htaw.http` existe para que la app no tenga que salir de su origen para hablar con Internet.
 - DevTools solo con `htaw --dev`.
 

@@ -51,6 +51,8 @@ internal sealed class HtawHost
             Background = pkg.Manifest.Theme == "native" ? HtawBackground : null,
             // Icono del manifiesto en todas las ventanas; si no hay, el del ejecutable.
             Icon = pkg.Icon,
+            // Enlaces y window.open a otras webs: solo con un clic o una tecla del usuario, salvo el permiso links.auto.
+            ExternalLinksRequireUserAction = !_perms.Has("links.auto"),
         });
         _app.Bridge.UseJson(ApiJson.Default);
         _app.Content = new HtawContent(pkg, _perms, () => HtmlInjector.ThemeStyle(_app.Native.Theme.Current));

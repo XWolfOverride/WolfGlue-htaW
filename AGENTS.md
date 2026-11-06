@@ -42,6 +42,9 @@ Repositorio con dos piezas:
   (por hash de archivo y por id de app). Datos en `%LOCALAPPDATA%\htaW` (forzable con `HTAW_DATA`).
 - htaW sin argumentos abre su panel (`Launcher.cs` + `Assets/launcher.html`, metodos `launcher.*`) con las acciones de la
   linea de comandos: abrir (el panel se cierra), `--dev` (sigue abierto), `pack`, asociar .htaw y olvidar permisos.
+- Enlaces y `window.open` a otras webs (http, https, mailto): navegador del sistema sin permiso, solo si los inicia el
+  usuario (`IsUserInitiated`); el permiso `links.auto` quita esa condicion (`ExternalLinksRequireUserAction`). El host no
+  usa `ExecuteScript` en las paginas (daria activacion de usuario falsa): el fundido se arranca con un mensaje.
 - Icono de app: `icon` del manifiesto (.png/.ico, ruta o `data:`) en barra de titulo y de tareas (`GlueAppOptions.Icon`).
   Icono por archivo en el explorador: descartado por ahora. Cada app fija su AppUserModelID (`htaW.<id>`) para tener su
   propio boton en la barra de tareas.
@@ -60,11 +63,13 @@ Repositorio con dos piezas:
   codigo, eventos desde otro hilo, varias ventanas, avisos entre ventanas, dialogo modal con resultado, cierre limpio,
   dialogos de abrir (multiple), guardar y carpeta, mensaje con botones, portapapeles, pantallas, tema y mostrar en
   el explorador.
-- Sin probar: cambio de DPI entre monitores, cambio de tema en caliente (evento `glue.theme`), enlace externo.
+- Sin probar: cambio de DPI entre monitores, cambio de tema en caliente (evento `glue.theme`).
+- Probado a mano (htaW, JIT y AOT): enlaces y `window.open` externos se abren con un clic real y se ignoran si los lanza
+  la página sola (temporizador, `click()` simulado); con `links.auto`, se abren igualmente.
 - Limitacion conocida: el mensaje nativo (`MessageBoxW`) sale en modo claro aunque el sistema este en oscuro.
 - Fase 2 (htaW en Windows) casi completa: `src/htaW` (paquete y manifiesto, permisos y confianza, API `htaw.*`,
   CSS nativo, linea de comandos), `samples/htaw` (`hola.htaw`, `markdown.htaw` y la carpeta `notas`) y `tests/htaW.Tests`
-  (116 pruebas, pasan). AOT: un `htaw.exe` de ~8,4 MB, sin avisos.
+  (117 pruebas, pasan). AOT: un `htaw.exe` de ~8,4 MB, sin avisos.
 - Probado a mano (JIT y AOT): HTML suelto con CSS nativo y acento del sistema, `exec` permitido, permiso denegado,
   dialogo modal con resultado, zip con confirmacion por Mark of the Web, guardar con `fs` y `dialog`, ajustes
   persistentes, segunda apertura sin preguntar, panel sin argumentos (estado de la asociacion, olvidar permisos, ayuda), `--version` y `pack` con salida redirigida.

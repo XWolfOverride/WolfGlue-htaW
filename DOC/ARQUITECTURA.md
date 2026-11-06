@@ -88,7 +88,8 @@ El backend se elige en tiempo de ejecución con `OperatingSystem.IsWindows()`, `
 `window.open` y los enlaces con `target="_blank"` se interceptan:
 - Si la URL es del host propio, se crea una `GlueWindow` nueva (las opciones de `window.open`
   se traducen a opciones de ventana).
-- Si es externa, se abre en el navegador del sistema y no se navega dentro de la app.
+- Si es externa, se abre en el navegador del sistema y no se navega dentro de la app, pero solo si la pidió el
+  usuario (clic o tecla) o la app desactivó `GlueAppOptions.ExternalLinksRequireUserAction`.
 
 ### Comunicación entre ventanas
 - Por el bridge: `host.emit("evento", datos, { to: "*" | idVentana })`.

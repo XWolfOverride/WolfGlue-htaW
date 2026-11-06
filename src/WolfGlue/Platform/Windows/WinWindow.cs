@@ -127,7 +127,7 @@ internal sealed class WinWindow : IPlatformWindow
     {
         if (_destroyed) return;
         Reveal();
-        _webview?.ExecuteScript(Shim.FadeInGo, null);
+        _webview?.PostWebMessageAsString(Shim.FadeInMessage);
         if (_contentShown) return;
         _contentShown = true;
         Win32.ShowWindow(_container, Win32.SW_SHOWNA);
@@ -302,7 +302,7 @@ internal sealed class WinWindow : IPlatformWindow
         wv.add_NewWindowRequested(new NewWindowRequestedHandler(OnNewWindowRequested));
         wv.add_NavigationStarting(new NavigationStartingHandler(a =>
         {
-            if (!_host.OnNavigationStarting(a.get_Uri())) a.put_Cancel(true);
+            if (!_host.OnNavigationStarting(a.get_Uri(), UserInitiated(a.get_IsUserInitiated))) a.put_Cancel(true);
         }));
         wv.add_DocumentTitleChanged(new DocumentTitleChangedHandler(() => _host.OnDocumentTitleChanged(wv.get_DocumentTitle())));
         wv.add_WindowCloseRequested(new WindowCloseRequestedHandler(Close));
@@ -380,10 +380,17 @@ internal sealed class WinWindow : IPlatformWindow
         }
     }
 
+    /// <summary>Si la navegacion la inicio el usuario. Ante un error de COM se toma como no iniciada por el usuario.</summary>
+    private static bool UserInitiated(Func<bool> get)
+    {
+        try { return get(); } catch (COMException) { return false; }
+    }
+
     private void OnNewWindowRequested(ICoreWebView2NewWindowRequestedEventArgs args)
     {
         args.put_Handled(true);
         var uri = args.get_Uri();
+        var user = UserInitiated(args.get_IsUserInitiated);
         int? w = null, h = null;
         try
         {
@@ -397,7 +404,7 @@ internal sealed class WinWindow : IPlatformWindow
         }
         catch (COMException) { }
         var host = _host;
-        _platform.Post(() => host.OnNewWindowRequested(uri, w, h));
+        _platform.Post(() => host.OnNewWindowRequested(uri, w, h, user));
     }
 
     // ------------------------------------------------------------- mensajes de ventana

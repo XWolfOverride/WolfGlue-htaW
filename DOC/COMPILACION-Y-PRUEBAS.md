@@ -42,7 +42,7 @@ dotnet publish src/htaW -c Release -r win-x64               # htaW AOT (vswhere 
   código, mensajes mal formados, ventana cerrada, eventos y reenvío, `UseJson`), tabla MIME, normalización de
   rutas, proveedores de contenido (recursos, carpeta, compuesto; rechazo de `..`), comprobación de origen, y
   tipos de los servicios nativos (patrones de filtro, forma JSON de opciones y resultados).
-- `tests/htaW.Tests` (116 pruebas, pasan): línea de comandos, extracción del manifiesto del HTML, validación
+- `tests/htaW.Tests` (117 pruebas, pasan): línea de comandos, extracción del manifiesto del HTML, validación
   del manifiesto e ids, permisos y forma canónica, reglas de `shell.exec` (resolución en `PATH` pasado como
   parámetro, nombres frente a rutas, intérpretes, `*.*`), archivos ejecutables para `shell.open`, Mark of the
   Web (flujo alternativo real en NTFS), reglas de `trust.json`, apertura de HTML/zip/carpeta, `pack`
@@ -67,7 +67,7 @@ como descargado: ventana de permisos (Cancelar por defecto), guardar con `fs`/`d
 segunda apertura sin preguntar; panel sin argumentos (estado de la asociación, lista y olvido de permisos, ayuda, cancelar un diálogo); carpeta pasada como argumento (como al arrastrarla sobre htaw) y recientes en el panel (Abrir); ejecutable portable (AOT) con argumentos y su icono en la barra de título, la de tareas y el `.exe`; `--version` y `pack` con salida
 redirigida.
 
-Sin probar todavía: los puntos de DPI, tema en caliente y enlace externo; en htaW, `--register`, `fs.watch`,
+Sin probar todavía: los puntos de DPI y tema en caliente (el enlace externo ya está probado: abre el navegador); en htaW, `--register`, `fs.watch`,
 `spawn` y `http.fetch`.
 - Abrir, redimensionar y cerrar varias ventanas; modal sobre dueña.
 - Mover la ventana entre monitores con distinta escala.

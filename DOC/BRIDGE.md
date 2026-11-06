@@ -121,5 +121,8 @@ para descargas desde C# y para subidas mediante POST (en Linux, WebKitGTK ≥ 2.
 - La navegación de la ventana principal a URLs externas se cancela y se abre en el navegador del sistema,
   pero **solo** si el esquema es `http`, `https` o `mailto` (`GlueApp.OpenExternal` / `IsWebUrl`). Cualquier otro
   (`file:`, rutas, protocolos de otras aplicaciones) se descarta: el shell podría ejecutar programas con ellos.
+- Además, por defecto solo si la navegación la **inició el usuario** (`IsUserInitiated` de WebView2,
+  `GlueAppOptions.ExternalLinksRequireUserAction`). Por eso el host no ejecuta scripts en la página con
+  `ExecuteScript`: le daría activación de usuario y cualquier navegación posterior contaría como del usuario.
 - DevTools y el menú contextual por defecto solo están activos en Debug o con una opción explícita.
 - Los servicios expuestos son los que registra la aplicación; no hay acceso genérico a .NET desde JS.

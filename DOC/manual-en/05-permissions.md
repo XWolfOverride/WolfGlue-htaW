@@ -14,6 +14,7 @@ download it.
 | `http` | `htaw.http.fetch` (without CORS) | Connect to the Internet without restrictions |
 | `env` | `htaw.env` (environment variables and user folders) | Read environment variables and user folders |
 | `shell.open` | `htaw.shell.open` and `htaw.shell.reveal` | Open files and addresses with other applications |
+| `links.auto` | Links and `window.open` to other websites open without a user click (for example, from a timer) | Open web pages in the browser without you asking |
 | `shell.exec` | `htaw.shell.exec` and `htaw.shell.spawn`, with a list of programs | Run these programs: … |
 
 Always available, without permission: `htaw.app`, `htaw.window`, `htaw.settings`, `htaw.theme`, `htaw.permissions`,
@@ -70,7 +71,11 @@ That is why the `id` should stay stable across versions and permissions should n
 ## The app's pages
 
 - Only pages of the app itself are loaded (its origin `https://<id>.htaw.local/`). Links and `window.open` to other
-  websites open in the system browser (only `http`, `https` and `mailto`); anything else is ignored.
+  websites open in the system browser (only `http`, `https` and `mailto`); anything else is ignored. No permission is
+  needed, but **only when the user starts it** (a click or a key press): if the page navigates to another website on
+  its own (`location.href = …` in a timer, a simulated `click()`), nothing opens. That way an app cannot open tabs
+  the user did not ask for. An app that really needs it declares the `links.auto` permission; and `htaw.shell.open`
+  (with its permission) always opens URLs.
 - DevTools exist only in development mode.
 - Each app has its own origin: other apps cannot see its `localStorage`, IndexedDB or cookies.
 - The `/_htaw/` path is reserved for htaW: do not put your own files in a folder named `_htaw`.

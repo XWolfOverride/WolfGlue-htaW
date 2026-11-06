@@ -7,7 +7,7 @@ namespace HtaW.Security;
 public sealed class PermissionSet
 {
     /// <summary>Permisos simples que se pueden declarar.</summary>
-    public static readonly string[] Known = ["fs", "dialog", "clipboard", "http", "env", "shell.open"];
+    public static readonly string[] Known = ["fs", "dialog", "clipboard", "http", "env", "shell.open", "links.auto"];
 
     private readonly HashSet<string> _simple = new(StringComparer.Ordinal);
 

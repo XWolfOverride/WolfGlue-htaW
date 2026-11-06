@@ -412,6 +412,8 @@ document.getElementById("exportar").hidden = !htaw.has("fs");
 
 - **`window.open(url)`** y los enlaces con `target="_blank"`: una página de la propia app se abre en una ventana de
   htaW; una URL externa (`http`, `https`, `mailto`) se abre en el navegador del sistema. Otros esquemas se ignoran.
+  Las URL externas solo se abren si las pide el usuario con un clic o una tecla (salvo con el permiso `links.auto`,
+  ver [Permisos](05-permisos.md#las-páginas-de-la-app)).
 - **Mensajes entre ventanas**: `glue.emit` / `glue.on`, `BroadcastChannel` y el evento `storage`; ver
   [Ventanas y comunicación](07-ventanas.md).
 - **Objeto `glue`**: es la capa de WolfGlue sobre la que se construye `htaw`. De él solo conviene usar `glue.emit`,

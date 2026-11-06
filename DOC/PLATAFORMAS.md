@@ -39,8 +39,10 @@ La web se pinta con dos motores distintos (Chromium y WebKit), así que hay que 
   fondo en `WM_ERASEBKGND`. El controlador de WebView2 vive en una ventana hija (`STATIC`) oculta hasta el primer
   `NavigationCompleted`: hasta tener el primer fotograma, WebView2 pinta su propio gris (`#121212` en oscuro) y
   ni `DefaultBackgroundColor` ni la variable `WEBVIEW2_DEFAULT_BACKGROUND_COLOR` lo evitan (comprobado). Al
-  mostrarla se llama por `ExecuteScript` a `__glueFadeIn()`, que arranca el fundido del `body` (Web Animations;
-  arranca solo a los 3 s si nadie lo llama). Se funde el `body` y no la raíz porque bajo una raíz transparente el
+  mostrarla se envía el mensaje `__glueFadeIn` (`PostWebMessageAsString`), que arranca el fundido del `body` (Web
+  Animations; arranca solo a los 3 s si no llega). Es un mensaje y no `ExecuteScript` porque ejecutar scripts desde
+  el host le da a la página activación de usuario, y entonces cualquier navegación contaría como iniciada por el
+  usuario (ver BRIDGE.md). Se funde el `body` y no la raíz porque bajo una raíz transparente el
   lienzo se pinta con el color de `color-scheme` del motor, no con el de la ventana.
 - `ICoreWebView2Settings8.IsReputationCheckingRequired = false` (salvo `UrlReputationCheck`): con SmartScreen
   activo, medido, pasan ~2 s entre servir el HTML y que el renderer pida el primer recurso.

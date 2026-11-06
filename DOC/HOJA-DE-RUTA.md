@@ -12,8 +12,8 @@ Orden previsto. Cada fase termina con algo que se puede ejecutar y probar.
    (texto), pantallas, tema con evento de cambio, shell (abrir URL, abrir archivo, mostrar en el explorador).
 7. ✅ Ejemplo C# en `samples/Hola`.
 
-Pendiente de probar a mano: mover entre monitores con distinta escala, cambiar el tema con la app abierta,
-enlace externo. Por decidir: desactivar las teclas de navegador (F5, Ctrl+P…) con `ICoreWebView2Settings3`;
+Pendiente de probar a mano: mover entre monitores con distinta escala, cambiar el tema con la app abierta.
+Por decidir: desactivar las teclas de navegador (F5, Ctrl+P…) con `ICoreWebView2Settings3`;
 mensajes con `TaskDialogIndirect` en vez de `MessageBoxW` (botones con texto propio; el modo oscuro tampoco
 lo soporta); imagen en el portapapeles.
 

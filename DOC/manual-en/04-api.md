@@ -410,6 +410,8 @@ document.getElementById("export").hidden = !htaw.has("fs");
 
 - **`window.open(url)`** and links with `target="_blank"`: a page of the app itself opens in an htaW window; an
   external URL (`http`, `https`, `mailto`) opens in the system browser. Other schemes are ignored.
+  External URLs only open when the user asks with a click or a key press (unless the app has the `links.auto`
+  permission, see [Permissions](05-permissions.md#the-apps-pages)).
 - **Messages between windows**: `glue.emit` / `glue.on`, `BroadcastChannel` and the `storage` event; see
   [Windows and messaging](07-windows.md).
 - **The `glue` object**: the WolfGlue layer `htaw` is built on. Only `glue.emit`, `glue.on` and `glue.off` are meant

@@ -51,6 +51,14 @@ public sealed class GlueAppOptions
     /// navegacion del orden de 2 s. Activarla si la app navega a sitios de terceros dentro de sus ventanas.
     /// </summary>
     public bool UrlReputationCheck { get; init; }
+
+    /// <summary>
+    /// Los enlaces y <c>window.open</c> a URL externas (http, https, mailto) solo abren el navegador del sistema si
+    /// los inicio el usuario (un clic o una tecla). Activado por defecto: asi una pagina no puede abrir pestanas por
+    /// su cuenta (<c>location.href = …</c> en un temporizador). Lo que la app abra desde C# con
+    /// <see cref="GlueApp.OpenExternal"/> no se ve afectado.
+    /// </summary>
+    public bool ExternalLinksRequireUserAction { get; init; } = true;
 }
 
 /// <summary>Cuando termina <see cref="GlueApp.Run"/>.</summary>

@@ -204,9 +204,9 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
         return GlueResponse.NotFound();
     }
 
-    void IWindowHost.OnNewWindowRequested(string url, int? width, int? height)
+    void IWindowHost.OnNewWindowRequested(string url, int? width, int? height, bool userInitiated)
     {
-        if (!IsTrustedUrl(url)) { App.OpenExternal(url); return; }
+        if (!IsTrustedUrl(url)) { OpenExternalFromPage(url, userInitiated); return; }
         var w = App.CreateWindow(new GlueWindowOptions
         {
             StartPage = url,
@@ -217,12 +217,23 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
         w.Show();
     }
 
-    bool IWindowHost.OnNavigationStarting(string url)
+    bool IWindowHost.OnNavigationStarting(string url, bool userInitiated)
     {
         if (IsTrustedUrl(url) || url.StartsWith("about:", StringComparison.Ordinal)
             || url.StartsWith("data:", StringComparison.Ordinal)) return true;
-        App.OpenExternal(url);
+        OpenExternalFromPage(url, userInitiated);
         return false;
+    }
+
+    /// <summary>
+    /// Enlace o <c>window.open</c> a una URL externa: se abre en el navegador del sistema, salvo que la app exija
+    /// accion del usuario (<see cref="GlueAppOptions.ExternalLinksRequireUserAction"/>) y la pagina lo haya pedido por
+    /// su cuenta; entonces se ignora.
+    /// </summary>
+    internal bool OpenExternalFromPage(string url, bool userInitiated)
+    {
+        if (App.Options.ExternalLinksRequireUserAction && !userInitiated) return false;
+        return App.OpenExternal(url);
     }
 
     /// <summary>URL del origen propio o del servidor de desarrollo.</summary>

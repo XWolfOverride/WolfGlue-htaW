@@ -171,7 +171,9 @@ internal partial interface ICoreWebView2NewWindowRequestedEventArgs
     string get_Uri();
     void _01(); void _02();
     void put_Handled([MarshalAs(UnmanagedType.Bool)] bool value);
-    void _04(); void _05(); void _06();
+    void _04();
+    [return: MarshalAs(UnmanagedType.Bool)] bool get_IsUserInitiated();
+    void _06();
     ICoreWebView2WindowFeatures get_WindowFeatures();
 }
 
@@ -191,7 +193,8 @@ internal partial interface ICoreWebView2WindowFeatures
 internal partial interface ICoreWebView2NavigationStartingEventArgs
 {
     string get_Uri();
-    void _01(); void _02(); void _03(); void _04();
+    [return: MarshalAs(UnmanagedType.Bool)] bool get_IsUserInitiated();
+    void _02(); void _03(); void _04();
     void put_Cancel([MarshalAs(UnmanagedType.Bool)] bool value);
 }
 

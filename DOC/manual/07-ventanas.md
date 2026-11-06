@@ -14,7 +14,7 @@ const { id } = await htaw.window.open("historial.html", { title: "Historial", wi
 - Opciones: `title` (si no, el `<title>` de la página), `width`, `height` (por defecto, los de la ventana actual),
   `resizable` (`true`), `modal` (`false`).
 - `window.open("historial.html")` y los enlaces con `target="_blank"` hacen lo mismo (las URL externas se abren en el
-  navegador del sistema).
+  navegador del sistema si las pide el usuario con un clic o una tecla).
 
 La ventana nueva tiene el mismo icono y el mismo aspecto que la principal.
 
