@@ -97,10 +97,10 @@ Xcode Command Line Tools en macOS). Para **ejecutar** en Linux hace falta WebKit
 (`libwebkit2gtk-4.1`); en Windows, el runtime de WebView2 (incluido en Windows 11).
 
 ```powershell
-irm https://raw.githubusercontent.com/XWolfOverride/WolfGlue/main/build.ps1 | iex           # Windows
+irm https://raw.githubusercontent.com/XWolfOverride/WolfGlue-htaW/main/build.ps1 | iex           # Windows
 ```
 ```bash
-curl -fsSL https://raw.githubusercontent.com/XWolfOverride/WolfGlue/main/build.sh | bash    # Linux y macOS (cuando estén soportados)
+curl -fsSL https://raw.githubusercontent.com/XWolfOverride/WolfGlue-htaW/main/build.sh | bash    # Linux y macOS (cuando estén soportados)
 ```
 
 Dentro de la carpeta del proyecto también puedes usar `publish.cmd` (doble clic, solo compila).
@@ -139,7 +139,7 @@ requirements (git, .NET 10 SDK and a native compiler: Visual Studio Build Tools 
 installing anything, downloads the latest version and leaves the executable in the project root:
 
 ```powershell
-irm https://raw.githubusercontent.com/XWolfOverride/WolfGlue/main/build.ps1 | iex           # Windows
+irm https://raw.githubusercontent.com/XWolfOverride/WolfGlue-htaW/main/build.ps1 | iex           # Windows
 ```
 
 To update, run the same command again. Running `.htaw` apps needs the WebView2 runtime (included in Windows 11).

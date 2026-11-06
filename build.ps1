@@ -1,6 +1,6 @@
 # htaW - autocompilacion NativeAOT para Windows (PowerShell 5.1 o superior).
 #
-#   irm https://raw.githubusercontent.com/XWolfOverride/WolfGlue/main/build.ps1 | iex
+#   irm https://raw.githubusercontent.com/XWolfOverride/WolfGlue-htaW/main/build.ps1 | iex
 #
 # Que hace:
 #   1. Comprueba que estan instaladas las herramientas necesarias (NO instala nada).
@@ -17,8 +17,8 @@
 function Invoke-HtawBuild {
     $ErrorActionPreference = 'Stop'
 
-    $repoUrl = if ($env:WOLFGLUE_REPO_URL) { $env:WOLFGLUE_REPO_URL } else { 'https://github.com/XWolfOverride/WolfGlue' }
-    $dirName = 'WolfGlue'
+    $repoUrl = if ($env:WOLFGLUE_REPO_URL) { $env:WOLFGLUE_REPO_URL } else { 'https://github.com/XWolfOverride/WolfGlue-htaW' }
+    $dirName = 'WolfGlue-htaW'
 
     function Ok($m)   { Write-Host "[OK] " -ForegroundColor Green -NoNewline; Write-Host $m }
     function Bad($m)  { Write-Host "[X]  " -ForegroundColor Red -NoNewline; Write-Host $m }
