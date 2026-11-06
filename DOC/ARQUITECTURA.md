@@ -64,9 +64,17 @@ El backend se elige en tiempo de ejecución con `OperatingSystem.IsWindows()`, `
 ### GlueWindow (N por app)
 - Opciones: título, icono, tamaño (en unidades lógicas), mínimo/máximo, posición o centrado,
   redimensionable, sin marco, siempre encima, `Owner`, `Modal`.
-- `Show()` no hace visible la ventana en el acto: espera a que termine la primera carga de la página (o a un
-  máximo de 3 s) para no enseñar un marco vacío mientras se crea el webview. El tiempo total no cambia; lo que
-  se evita es la ventana vacía. Un diálogo modal deshabilita a su dueña desde el `Show()`.
+- Aparición: `Show()` muestra la ventana cuando la página inicial ha cargado o, como mucho, a los `ShowDelayMs`
+  (500 ms por defecto), ya pintada con su **color de fondo inicial**; la página entra con un **fundido** corto
+  (`FadeInMs`, 150 ms; se omite si el sistema pide reducir animaciones). Así nunca se ve un marco vacío ni un
+  destello de otro color, y si la carga se alarga, la ventana ya está en pantalla. Un diálogo modal deshabilita a
+  su dueña desde el `Show()`.
+- Color de fondo inicial, por orden: `GlueWindowOptions.Background`; el `<meta name="theme-color">` de la página
+  inicial (admite uno por tema con `media="(prefers-color-scheme: dark)"`); `GlueAppOptions.Background`; blanco
+  o `#202020` según el tema. Formatos: `#rgb`, `#rrggbb` o `light-dark(#claro, #oscuro)`. Conviene que coincida
+  con el fondo de la página: el fundido es del `body`, y el fondo de la página aparece de golpe.
+- Sin comprobación de reputación de URL (SmartScreen) salvo `GlueAppOptions.UrlReputationCheck`: medido, retrasa
+  cada navegación unos 2 s (de ~0,5 s a ~2,5 s hasta ver la página) y el contenido es propio.
 - Eventos: `Closing` (cancelable), `Closed`, `Resized`, `Moved`, `Activated`, `Deactivated`.
 - Contenido: `Navigate(url)`, o un proveedor de contenido para el host propio (recursos incrustados,
   zip, carpeta).

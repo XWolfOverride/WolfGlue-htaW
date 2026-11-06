@@ -46,25 +46,32 @@ internal sealed class WinWindow : IPlatformWindow
         finally { _creating = null; }
         if (Hwnd == 0) throw new InvalidOperationException("CreateWindowExW fallo: " + Marshal.GetLastPInvokeError());
         Windows[Hwnd] = this;
+        // Contenedor del webview, oculto hasta que la pagina carga: WebView2 pinta su propio gris hasta tener el primer
+        // fotograma (DefaultBackgroundColor no se aplica antes), asi que mientras tanto se ve el fondo de esta ventana.
+        _container = Win32.CreateWindowExW(0, "STATIC", null, Win32.WS_CHILD | Win32.WS_CLIPCHILDREN,
+            0, 0, 0, 0, Hwnd, 0, platform.HInstance, 0);
         ApplyTheme();
     }
 
+    private readonly nint _container;
+    private bool _contentShown;
+
     // ------------------------------------------------------------- IPlatformWindow
     /// <summary>
-    /// La ventana no se hace visible hasta que la pagina inicial termina de cargar (o pasa
-    /// <see cref="RevealTimeoutMs"/>), para no mostrar un marco vacio mientras se crea el webview.
+    /// La ventana se muestra cuando la pagina inicial ha cargado o, como mucho, a los
+    /// <see cref="GlueWindowOptions.ShowDelayMs"/>, pintada con el color de fondo inicial; la pagina aparece con un
+    /// fundido desde ese color (ver <see cref="Shim.FadeIn"/>).
     /// </summary>
     public void Show()
     {
         var o = _host.Options;
         PlaceWindow(o);
         if (o.Modal && _owner != 0) Win32.EnableWindow(_owner, false);
-        Win32.SetTimer(Hwnd, RevealTimerId, RevealTimeoutMs, 0);
+        if (o.ShowDelayMs > 0) Win32.SetTimer(Hwnd, RevealTimerId, (uint)o.ShowDelayMs, 0);
+        else Reveal();
         _platform.WhenEnvironment(CreateController);
     }
 
-    /// <summary>Tiempo maximo de espera antes de mostrar la ventana aunque la pagina no haya cargado.</summary>
-    internal const uint RevealTimeoutMs = 3000;
     private const nint RevealTimerId = 1;
     private bool _revealed;
 
@@ -75,7 +82,23 @@ internal sealed class WinWindow : IPlatformWindow
         _revealed = true;
         Win32.KillTimer(Hwnd, RevealTimerId);
         Win32.ShowWindow(Hwnd, _host.Options.Maximized ? Win32.SW_SHOWMAXIMIZED : Win32.SW_SHOWNORMAL);
+        Win32.UpdateWindow(Hwnd);
         Win32.SetForegroundWindow(Hwnd);
+        if (_contentShown) _controller?.MoveFocus(WebView2Const.MOVE_FOCUS_REASON_PROGRAMMATIC);
+    }
+
+    /// <summary>
+    /// Pagina cargada: muestra la ventana si aun no lo estaba, hace visible el webview y arranca el fundido. Se repite en
+    /// cada navegacion (el contenedor ya visible no cambia; el fundido es el del documento nuevo).
+    /// </summary>
+    private void OnNavigationCompleted()
+    {
+        if (_destroyed) return;
+        Reveal();
+        _webview?.ExecuteScript(Shim.FadeInGo, null);
+        if (_contentShown) return;
+        _contentShown = true;
+        Win32.ShowWindow(_container, Win32.SW_SHOWNA);
         _controller?.MoveFocus(WebView2Const.MOVE_FOCUS_REASON_PROGRAMMATIC);
     }
 
@@ -178,23 +201,42 @@ internal sealed class WinWindow : IPlatformWindow
         int dark = _platform.DarkMode ? 1 : 0;
         Win32.DwmSetWindowAttribute(Hwnd, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, &dark, sizeof(int));
         if (_controller is ICoreWebView2Controller2 c2) c2.put_DefaultBackgroundColor(BackgroundColor);
+        Win32.InvalidateRect(Hwnd, 0, true);
     }
 
-    private COREWEBVIEW2_COLOR BackgroundColor =>
-        _platform.DarkMode ? new() { A = 255, R = 0x20, G = 0x20, B = 0x20 } : new() { A = 255, R = 255, G = 255, B = 255 };
+    private GlueRgb Background => _host.Background.For(_platform.DarkMode);
+
+    private COREWEBVIEW2_COLOR BackgroundColor
+    {
+        get
+        {
+            var c = Background;
+            return new() { A = 255, R = c.R, G = c.G, B = c.B };
+        }
+    }
+
+    /// <summary>Pinta el area de cliente con el color de fondo (visible hasta que el webview pinta).</summary>
+    private void EraseBackground(nint hdc)
+    {
+        var c = Background;
+        var brush = Win32.CreateSolidBrush(c.R | (uint)c.G << 8 | (uint)c.B << 16);
+        Win32.GetClientRect(Hwnd, out var r);
+        Win32.FillRect(hdc, ref r, brush);
+        Win32.DeleteObject(brush);
+    }
 
     private void ResizeWebView()
     {
-        if (_controller is null) return;
         Win32.GetClientRect(Hwnd, out var r);
-        _controller.put_Bounds(r);
+        Win32.SetWindowPos(_container, 0, 0, 0, r.Width, r.Height, Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
+        _controller?.put_Bounds(r);
     }
 
     // ------------------------------------------------------------- WebView2
     private void CreateController(ICoreWebView2Environment env)
     {
         if (_destroyed) return;
-        env.CreateCoreWebView2Controller(Hwnd, new ControllerCompletedHandler((hr, controller) =>
+        env.CreateCoreWebView2Controller(_container, new ControllerCompletedHandler((hr, controller) =>
         {
             if (_destroyed) { controller?.Close(); return; }
             if (hr < 0 || controller is null)
@@ -219,6 +261,8 @@ internal sealed class WinWindow : IPlatformWindow
         s.put_AreDefaultContextMenusEnabled(_host.DevTools);
         s.put_IsStatusBarEnabled(false);
         s.put_IsZoomControlEnabled(false);
+        // Comprobacion de reputacion de URL (SmartScreen): retrasa cada navegacion ~2 s y el contenido es propio.
+        if (s is ICoreWebView2Settings8 s8) s8.put_IsReputationCheckingRequired(((GlueWindow)_host).App.Options.UrlReputationCheck);
 
         wv.add_WebMessageReceived(new WebMessageReceivedHandler(OnWebMessage));
         wv.add_WebResourceRequested(new WebResourceRequestedHandler(args => OnResourceRequested(env, args)));
@@ -230,10 +274,10 @@ internal sealed class WinWindow : IPlatformWindow
         }));
         wv.add_DocumentTitleChanged(new DocumentTitleChangedHandler(() => _host.OnDocumentTitleChanged(wv.get_DocumentTitle())));
         wv.add_WindowCloseRequested(new WindowCloseRequestedHandler(Close));
-        // Primera carga terminada (bien o con error): ya se puede mostrar la ventana.
-        wv.add_NavigationCompleted(new NavigationCompletedHandler(Reveal));
+        // Pagina inicial cargada (bien o con error): se muestra ya, sin esperar al plazo.
+        wv.add_NavigationCompleted(new NavigationCompletedHandler(OnNavigationCompleted));
 
-        var scripts = Shim.For(((GlueWindow)_host).Id, "windows");
+        var scripts = Shim.For(((GlueWindow)_host).Id, "windows") + "\n;" + Shim.FadeIn(_host.Options.FadeInMs);
         foreach (var extra in _host.ExtraScripts) scripts += "\n;" + extra;
         wv.AddScriptToExecuteOnDocumentCreated(scripts, new AddScriptCompletedHandler());
 
@@ -407,9 +451,13 @@ internal sealed class WinWindow : IPlatformWindow
                 return 0;
 
             case Win32.WM_TIMER:
-                // Red de seguridad: si la pagina tarda demasiado, la ventana se muestra igualmente.
+                // Plazo cumplido: se muestra con el color de fondo aunque la pagina aun no este.
                 if (wParam == RevealTimerId) { Reveal(); return 0; }
                 break;
+
+            case Win32.WM_ERASEBKGND:
+                EraseBackground(wParam);
+                return 1;
 
             case Win32.WM_DESTROY:
                 _destroyed = true;

@@ -71,7 +71,9 @@ Mismo esquema en los dos formatos (en el HTML suelto `entry` no se usa).
     "center": true,
     "frame": "native",              // native | none
     "maximized": false,
-    "alwaysOnTop": false
+    "alwaysOnTop": false,
+    "background": "#f3f3f3",        // color mientras carga: #rgb, #rrggbb o light-dark(#claro, #oscuro)
+    "fadeIn": 150                   // fundido de entrada en ms (0 = sin fundido)
   },
   "singleInstance": false,
   "theme": "native",                // native | none (CSS de htaW, ver HTAW-ESTILO.md)
@@ -100,8 +102,10 @@ Implementado en `src/htaW/Package/` (`HtawManifest.cs`, `HtawPackage.cs`). Detal
 - Id derivado (sin `id` en el manifiesto): `local-` + 16 caracteres hex del SHA-256 de la ruta completa
   (en Windows, en minúsculas). Estable para el mismo archivo; distinto para archivos distintos.
 - El JSON del manifiesto admite comentarios y comas finales.
+- `window.background`: sin él, se usa el `<meta name="theme-color">` del HTML de entrada si lo hay y, si no, con
+  `theme: "native"` el fondo de `htaw.css` (`--htaw-bg`), así que una app sin CSS propio no necesita indicarlo.
 - Se rechazan como error: JSON inválido, `id` inválido, `theme` distinto de `native`/`none`, tamaños fuera de
-  100–10000 × 80–10000, mínimos negativos, `frame` desconocido, `entry` que sale de la raíz, permisos
+  100–10000 × 80–10000, mínimos negativos, `frame` desconocido, `background` con formato no admitido, `fadeIn` fuera de 0–2000, `entry` que sale de la raíz, permisos
   desconocidos o mal formados.
 - Avisos (no error): campos desconocidos (también dentro de `window`), HTML sin bloque de manifiesto,
   `entry` en un HTML suelto (se ignora), `window.frame: "none"` (aún no soportado: se usa el marco del sistema).

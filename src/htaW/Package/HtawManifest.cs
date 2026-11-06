@@ -39,6 +39,10 @@ public sealed class HtawWindow
     public string Frame { get; set; } = "native";
     public bool Maximized { get; set; }
     public bool AlwaysOnTop { get; set; }
+    /// <summary>Color mientras carga: <c>#rgb</c>, <c>#rrggbb</c> o <c>light-dark(#claro, #oscuro)</c>.</summary>
+    public string? Background { get; set; }
+    /// <summary>Duracion del fundido de entrada en ms (0 = sin fundido; por defecto 150).</summary>
+    public int FadeIn { get; set; } = 150;
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
@@ -101,6 +105,9 @@ public static partial class ManifestReader
         if (w.MinWidth < 0 || w.MinHeight < 0) throw new HtawFormatException(Strings.ManifestBadValue("window.min*", "<0"));
         if (w.Frame is not ("native" or "none")) throw new HtawFormatException(Strings.ManifestBadValue("window.frame", w.Frame));
         if (w.Frame == "none") warnings.Add(Strings.WarnFrameNone);
+        if (w.Background is not null && !WolfGlue.GlueBackground.TryParse(w.Background, out _))
+            throw new HtawFormatException(Strings.ManifestBadValue("window.background", w.Background));
+        if (w.FadeIn is < 0 or > 2000) throw new HtawFormatException(Strings.ManifestBadValue("window.fadeIn", w.FadeIn.ToString()));
         if (m.Entry is not null && Content.ContentPathCheck(m.Entry) is null)
             throw new HtawFormatException(Strings.ManifestBadValue("entry", m.Entry));
         foreach (var k in m.Unknown?.Keys ?? Enumerable.Empty<string>()) warnings.Add(Strings.WarnUnknownField(k));

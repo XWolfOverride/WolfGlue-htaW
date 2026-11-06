@@ -60,6 +60,7 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
         if (_shown || _isClosed) return;
         _shown = true;
         App.Attach(this);
+        _background = ResolveBackground();
         _native.Show();
     }
 
@@ -120,6 +121,33 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     string IWindowHost.Origin => App.Origin;
     bool IWindowHost.DevTools => App.Options.DevTools;
     IReadOnlyList<string> IWindowHost.ExtraScripts => App.Scripts;
+    GlueBackground IWindowHost.Background => _background ??= ResolveBackground();
+
+    private GlueBackground? _background;
+
+    /// <summary>
+    /// Opcion de la ventana; si no, <c>theme-color</c> de la pagina inicial (solo si el contenido la da sin esperar,
+    /// para no retrasar la apertura); si no, el de la app; si no, el del sistema.
+    /// </summary>
+    internal GlueBackground ResolveBackground()
+    {
+        if (Options.Background is { } b) return b;
+        try
+        {
+            var url = ResolveUrl(Options.StartPage);
+            if (IsSameOrigin(url, App.Origin))
+            {
+                var (path, query) = GlueRequest.SplitPath(url[App.Origin.Length..]);
+                var task = ((IWindowHost)this).HandleRequestAsync(new GlueRequest("GET", path, query, default));
+                if (task.IsCompletedSuccessfully && task.Result is { Status: 200 } r
+                    && r.ContentType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase)
+                    && GlueColorParser.ThemeColorFromHtml(System.Text.Encoding.UTF8.GetString(r.Body.Span)) is { } tc)
+                    return tc;
+            }
+        }
+        catch (Exception) { /* sin theme-color: se sigue con los valores por defecto */ }
+        return App.Options.Background ?? GlueBackground.System;
+    }
 
     void IWindowHost.OnWebViewReady()
     {

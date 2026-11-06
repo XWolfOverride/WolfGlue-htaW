@@ -25,6 +25,10 @@ Repositorio con dos piezas:
   los dialogos se encolan en el hilo de UI (nunca dentro de un callback del webview). Se exponen a la web como
   `glue.dialog/clipboard/screens/theme/shell` salvo `NativeServicesInWeb = false` (htaW lo desactivara y pondra
   sus versiones con permisos).
+- Aparicion de ventanas: se muestran al cargar la pagina o, como mucho, a los 500 ms (`ShowDelayMs`), pintadas con
+  un color de fondo inicial (opcion, `theme-color` de la pagina, app o tema) y con fundido del `body` (`FadeInMs`).
+  El webview va en una hija oculta hasta la carga (WebView2 pinta su gris antes del primer fotograma).
+- SmartScreen del webview desactivado por defecto (`UrlReputationCheck`): retrasaba cada navegacion ~2 s.
 - Comunicacion web <-> C#: JSON-RPC sobre el canal de mensajes del webview + `fetch` al host propio para binarios.
 - WolfGlue se consume **solo como `ProjectReference`** (submodulo git en otros repos); no se publica en NuGet.
   El consumidor importa `WolfGlue.targets` con una linea.
@@ -40,7 +44,7 @@ Repositorio con dos piezas:
 
 ## Estado
 - Fase 1 (WolfGlue en Windows) completa: `src/WolfGlue` (API, bridge, contenido, servicios nativos `app.Native`,
-  backend Win32 + WebView2), `samples/Hola` (ejemplo) y `tests/WolfGlue.Tests` (xUnit, 48 pruebas, pasan).
+  backend Win32 + WebView2), `samples/Hola` (ejemplo) y `tests/WolfGlue.Tests` (xUnit, 78 pruebas, pasan).
 - Probado a mano en Windows 11, con JIT y con AOT (un `.exe` de ~3,9 MB): llamadas sincronas/asincronas, errores con
   codigo, eventos desde otro hilo, varias ventanas, avisos entre ventanas, dialogo modal con resultado, cierre limpio,
   dialogos de abrir (multiple), guardar y carpeta, mensaje con botones, portapapeles, pantallas, tema y mostrar en
@@ -49,7 +53,7 @@ Repositorio con dos piezas:
 - Limitacion conocida: el mensaje nativo (`MessageBoxW`) sale en modo claro aunque el sistema este en oscuro.
 - Fase 2 (htaW en Windows) casi completa: `src/htaW` (paquete y manifiesto, permisos y confianza, API `htaw.*`,
   CSS nativo, linea de comandos), `samples/htaw` (`hola.htaw`, `markdown.htaw` y la carpeta `notas`) y `tests/htaW.Tests`
-  (86 pruebas, pasan). AOT: un `htaw.exe` de ~8,4 MB, sin avisos.
+  (88 pruebas, pasan). AOT: un `htaw.exe` de ~8,4 MB, sin avisos.
 - Probado a mano (JIT y AOT): HTML suelto con CSS nativo y acento del sistema, `exec` permitido, permiso denegado,
   dialogo modal con resultado, zip con confirmacion por Mark of the Web, guardar con `fs` y `dialog`, ajustes
   persistentes, segunda apertura sin preguntar, sin argumentos (selector), `--version` y `pack` con salida redirigida.

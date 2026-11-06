@@ -28,6 +28,9 @@ internal sealed class HtawHost
 
     private static readonly HttpClient Http = new() { Timeout = Timeout.InfiniteTimeSpan };
 
+    /// <summary>Fondo de <c>htaw.css</c> (<c>--htaw-bg</c>) en claro y oscuro.</summary>
+    internal static readonly GlueBackground HtawBackground = GlueBackground.Parse("light-dark(#f3f3f3, #202020)");
+
     public HtawHost(HtawPackage pkg, string[] args, bool dev)
     {
         _pkg = pkg;
@@ -42,6 +45,8 @@ internal sealed class HtawHost
             DevTools = dev,
             NativeServicesInWeb = false, // htaW expone sus versiones con permisos
             DataFolder = Path.Combine(HtawPaths.Root, "WebView2"),
+            // Mismo fondo que --htaw-bg de htaw.css, para que la ventana aparezca ya con el color de la pagina.
+            Background = pkg.Manifest.Theme == "native" ? HtawBackground : null,
         });
         _app.Bridge.UseJson(ApiJson.Default);
         _app.Content = new HtawContent(pkg, _perms, () => HtmlInjector.ThemeStyle(_app.Native.Theme.Current));
@@ -81,6 +86,8 @@ internal sealed class HtawHost
             Maximized = w.Maximized,
             AlwaysOnTop = w.AlwaysOnTop,
             StartPage = _pkg.Entry,
+            Background = w.Background is null ? null : GlueBackground.Parse(w.Background),
+            FadeInMs = w.FadeIn,
         });
         win.Show();
         if (_dev) StartDevWatcher();

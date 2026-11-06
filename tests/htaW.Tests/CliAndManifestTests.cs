@@ -77,6 +77,8 @@ public class ManifestTests
     [InlineData("""{"permissions":["shell.exec"]}""")]
     [InlineData("""{"permissions":[{"shell.exec":"git"}]}""")]
     [InlineData("""{"permissions":[{"otro":[]}]}""")]
+    [InlineData("""{"window":{"background":"azul"}}""")]
+    [InlineData("""{"window":{"fadeIn":-1}}""")]
     [InlineData("no es json")]
     public void InvalidManifests(string json) =>
         Assert.Throws<HtawFormatException>(() => ManifestReader.Parse(json, []));

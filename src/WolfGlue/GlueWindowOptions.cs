@@ -39,4 +39,23 @@ public sealed class GlueWindowOptions
 
     /// <summary>Pagina inicial: ruta relativa al origen propio (<c>index.html</c>) o URL completa.</summary>
     public string StartPage { get; set; } = "index.html";
+
+    /// <summary>
+    /// Color con el que aparece la ventana mientras carga la pagina (la ventana se muestra al momento). Si es null:
+    /// el <c>&lt;meta name="theme-color"&gt;</c> de la pagina inicial, luego <see cref="GlueAppOptions.Background"/>,
+    /// luego blanco/gris oscuro segun el tema. Conviene que coincida con el fondo de la pagina.
+    /// </summary>
+    public GlueBackground? Background { get; set; }
+
+    /// <summary>
+    /// Duracion en ms del fundido del contenido desde el color de fondo al cargar cada pagina. 0 lo desactiva. Se omite
+    /// si el sistema pide reducir animaciones.
+    /// </summary>
+    public int FadeInMs { get; set; } = 150;
+
+    /// <summary>
+    /// Espera maxima en ms antes de mostrar la ventana: si la pagina carga antes, se muestra entonces (ya con
+    /// contenido); si no, aparece con <see cref="Background"/> y la pagina entra con el fundido. 0 = mostrar al momento.
+    /// </summary>
+    public int ShowDelayMs { get; set; } = 500;
 }

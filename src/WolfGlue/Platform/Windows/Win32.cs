@@ -13,9 +13,10 @@ internal static unsafe partial class Win32
 
     public const uint WM_DESTROY = 0x0002, WM_MOVE = 0x0003, WM_SIZE = 0x0005, WM_ACTIVATE = 0x0006,
         WM_SETFOCUS = 0x0007, WM_CLOSE = 0x0010, WM_GETMINMAXINFO = 0x0024, WM_SETTINGCHANGE = 0x001A,
-        WM_DPICHANGED = 0x02E0, WM_APP = 0x8000, WM_MOVING = 0x0216, WM_TIMER = 0x0113;
+        WM_DPICHANGED = 0x02E0, WM_APP = 0x8000, WM_MOVING = 0x0216, WM_TIMER = 0x0113, WM_ERASEBKGND = 0x0014;
 
-    public const int SW_HIDE = 0, SW_SHOWNORMAL = 1, SW_SHOWMINIMIZED = 2, SW_SHOWMAXIMIZED = 3, SW_RESTORE = 9;
+    public const uint WS_CHILD = 0x40000000;
+    public const int SW_SHOWNA = 8, SW_HIDE = 0, SW_SHOWNORMAL = 1, SW_SHOWMINIMIZED = 2, SW_SHOWMAXIMIZED = 3, SW_RESTORE = 9;
     public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010;
     public const int CW_USEDEFAULT = unchecked((int)0x80000000);
     public static readonly nint HWND_MESSAGE = -3;
@@ -191,6 +192,21 @@ internal static unsafe partial class Win32
 
     [LibraryImport("gdi32.dll")]
     public static partial nint CreateSolidBrush(uint colorRef);
+
+    [LibraryImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool DeleteObject(nint obj);
+
+    [LibraryImport("user32.dll")]
+    public static partial int FillRect(nint hdc, ref RECT rect, nint brush);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UpdateWindow(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool InvalidateRect(nint hwnd, nint rect, [MarshalAs(UnmanagedType.Bool)] bool erase);
 
     // ------------------------------------------------------------- COM y shell
     public const uint CLSCTX_INPROC_SERVER = 1;

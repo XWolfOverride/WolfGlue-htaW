@@ -72,6 +72,8 @@ internal interface IWindowHost
     bool DevTools { get; }
     /// <summary>Scripts que se inyectan tras el shim en cada documento.</summary>
     IReadOnlyList<string> ExtraScripts { get; }
+    /// <summary>Color de fondo inicial resuelto (opcion, theme-color, app, sistema).</summary>
+    GlueBackground Background { get; }
     void OnWebViewReady();
     void OnWebMessage(string json, string source);
     /// <summary>Devuelve false para cancelar el cierre.</summary>

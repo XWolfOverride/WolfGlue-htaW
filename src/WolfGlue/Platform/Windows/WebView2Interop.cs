@@ -114,6 +114,22 @@ internal partial interface ICoreWebView2Settings
     void put_IsZoomControlEnabled([MarshalAs(UnmanagedType.Bool)] bool value);               // 15
 }
 
+/// <summary>
+/// Solo el miembro que se usa de Settings8, con la vtable aplanada: 18 de Settings + 2 (Settings2) + 2 (3) + 4 (4)
+/// + 2 (5) + 2 (6) + 2 (7) = 32 huecos antes de IsReputationCheckingRequired.
+/// </summary>
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
+[Guid("9e6b0e8f-86ad-4e81-8147-a9b5edb68650")]
+internal partial interface ICoreWebView2Settings8
+{
+    void _00(); void _01(); void _02(); void _03(); void _04(); void _05(); void _06(); void _07();
+    void _08(); void _09(); void _10(); void _11(); void _12(); void _13(); void _14(); void _15();
+    void _16(); void _17(); void _18(); void _19(); void _20(); void _21(); void _22(); void _23();
+    void _24(); void _25(); void _26(); void _27(); void _28(); void _29(); void _30(); void _31();
+    void _32();
+    void put_IsReputationCheckingRequired([MarshalAs(UnmanagedType.Bool)] bool value);      // 33
+}
+
 [GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("0f99a40c-e962-4207-9e92-e3d542eff849")]
 internal partial interface ICoreWebView2WebMessageReceivedEventArgs

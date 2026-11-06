@@ -31,9 +31,16 @@ La web se pinta con dos motores distintos (Chromium y WebKit), así que hay que 
 - Si no hay runtime de WebView2, se muestra un mensaje nativo (`MessageBoxW`) con el enlace al
   instalador y la app termina con un código de error.
 - Carpeta de datos del webview: `%LOCALAPPDATA%\<idApp>\WebView2`, nunca junto al ejecutable.
-- Mostrar cuando está lista: la ventana se crea oculta y `ShowWindow` se llama en el primer
-  `NavigationCompleted` (con éxito o error) o al saltar un temporizador de 3 s (`SetTimer` + `WM_TIMER`).
-  Comprobado: el webview pinta aunque la ventana esté oculta, así que aparece ya con contenido.
+- Aparición: la ventana se crea oculta y `ShowWindow` se llama en el primer `NavigationCompleted` (con éxito o
+  error) o al saltar un temporizador de `ShowDelayMs` (`SetTimer` + `WM_TIMER`). La ventana pinta su color de
+  fondo en `WM_ERASEBKGND`. El controlador de WebView2 vive en una ventana hija (`STATIC`) oculta hasta el primer
+  `NavigationCompleted`: hasta tener el primer fotograma, WebView2 pinta su propio gris (`#121212` en oscuro) y
+  ni `DefaultBackgroundColor` ni la variable `WEBVIEW2_DEFAULT_BACKGROUND_COLOR` lo evitan (comprobado). Al
+  mostrarla se llama por `ExecuteScript` a `__glueFadeIn()`, que arranca el fundido del `body` (Web Animations;
+  arranca solo a los 3 s si nadie lo llama). Se funde el `body` y no la raíz porque bajo una raíz transparente el
+  lienzo se pinta con el color de `color-scheme` del motor, no con el de la ventana.
+- `ICoreWebView2Settings8.IsReputationCheckingRequired = false` (salvo `UrlReputationCheck`): con SmartScreen
+  activo, medido, pasan ~2 s entre servir el HTML y que el renderer pida el primer recurso.
   Pendiente opcional: un webview precalentado para que las ventanas nuevas aparezcan casi al instante
   (cuesta ~25 MB mientras espera).
 

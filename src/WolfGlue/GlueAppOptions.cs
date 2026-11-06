@@ -36,6 +36,16 @@ public sealed class GlueAppOptions
     /// aplicacion quiere exponer su propia version con comprobaciones (como htaW).
     /// </summary>
     public bool NativeServicesInWeb { get; init; } = true;
+
+    /// <summary>Color inicial de las ventanas que no fijan el suyo (ver <see cref="GlueWindowOptions.Background"/>).</summary>
+    public GlueBackground? Background { get; init; }
+
+    /// <summary>
+    /// Comprobacion de reputacion de las URL por el webview (SmartScreen en Windows). Desactivada por defecto: el
+    /// contenido es propio, las URL externas se abren en el navegador del sistema y la comprobacion retrasa cada
+    /// navegacion del orden de 2 s. Activarla si la app navega a sitios de terceros dentro de sus ventanas.
+    /// </summary>
+    public bool UrlReputationCheck { get; init; }
 }
 
 /// <summary>Cuando termina <see cref="GlueApp.Run"/>.</summary>
