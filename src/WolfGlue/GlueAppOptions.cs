@@ -53,12 +53,26 @@ public sealed class GlueAppOptions
     public bool UrlReputationCheck { get; init; }
 
     /// <summary>
+    /// Teclas propias de un navegador en el webview (F5/Ctrl+R recargar, Ctrl+P imprimir, Ctrl+F buscar, Ctrl+/- zoom,
+    /// F12 herramientas, Alt+flechas atras/adelante). Desactivadas por defecto: los webviews de macOS y Linux no las
+    /// tienen y una app no deberia recargarse con F5. La pagina sigue recibiendo esas teclas (<c>keydown</c>) para usarlas.
+    /// </summary>
+    public bool BrowserKeys { get; init; }
+
+    /// <summary>
     /// Los enlaces y <c>window.open</c> a URL externas (http, https, mailto) solo abren el navegador del sistema si
     /// los inicio el usuario (un clic o una tecla). Activado por defecto: asi una pagina no puede abrir pestanas por
     /// su cuenta (<c>location.href = …</c> en un temporizador). Lo que la app abra desde C# con
     /// <see cref="GlueApp.OpenExternal"/> no se ve afectado.
     /// </summary>
     public bool ExternalLinksRequireUserAction { get; init; } = true;
+
+    /// <summary>
+    /// Lee la barra de titulo que declara una pagina (su HTML) para las ventanas que no la reciben por opciones. Se llama al
+    /// mostrar la ventana, con la pagina inicial si el contenido la da sin esperar; null = sin barra propia. htaW la saca del
+    /// bloque de manifiesto del <c>&lt;head&gt;</c> de cada pagina.
+    /// </summary>
+    public Func<string, GlueTitleBar?>? PageTitleBar { get; init; }
 }
 
 /// <summary>Cuando termina <see cref="GlueApp.Run"/>.</summary>

@@ -163,6 +163,7 @@ public sealed class InitEnv
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(FsEntry[]))]
+[JsonSerializable(typeof(SecondInstanceInfo))]
 [JsonSerializable(typeof(FsStat))]
 [JsonSerializable(typeof(FsWriteText))]
 [JsonSerializable(typeof(FsTwoPaths))]

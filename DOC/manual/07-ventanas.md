@@ -12,11 +12,12 @@ const { id } = await htaw.window.open("historial.html", { title: "Historial", wi
 - `pagina`: ruta de una página de la app, relativa a la raíz (`"historial.html"`, `"vistas/detalle.html?id=3"`).
   Las páginas de fuera de la app no se pueden abrir en una ventana de htaW.
 - Opciones: `title` (si no, el `<title>` de la página), `width`, `height` (por defecto, los de la ventana actual),
-  `resizable` (`true`), `modal` (`false`).
+  `resizable` (`true`), `modal` (`false`), `titlebar` (barra de título propia, o `false`).
 - `window.open("historial.html")` y los enlaces con `target="_blank"` hacen lo mismo (las URL externas se abren en el
   navegador del sistema si las pide el usuario con un clic o una tecla).
 
-La ventana nueva tiene el mismo icono y el mismo aspecto que la principal.
+La ventana nueva tiene el mismo icono y el mismo aspecto que la principal. Su barra de título es la que declare su página
+(o la de la opción `titlebar`); cada ventana tiene la suya o la normal del sistema. Ver [Barra de título](10-barra-de-titulo.md).
 
 ## Diálogos propios con resultado (ventanas modales)
 
@@ -97,6 +98,22 @@ canal.onmessage = (e) => console.log(e.data);
 
 addEventListener("storage", (e) => { if (e.key === "tema-app") aplicar(e.newValue); });
 ```
+
+## Avisar antes de cerrar
+
+```js
+let modificado = false;
+htaw.window.onClosing(async () => {
+  if (!modificado) return;                       // nada que perder: se cierra
+  const r = await htaw.dialog.message("Hay cambios sin guardar. ¿Cerrar igualmente?",
+    { kind: "warning", buttons: "yesNo" });      // necesita el permiso "dialog"
+  return r === "yes";                            // false: la ventana sigue abierta
+});
+```
+
+Se llama cuando el usuario cierra la ventana (botón, Alt+F4, barra de tareas) o lo pide el sistema; no cuando la propia
+página llama a `htaw.window.close()`. Si la página no responde (bloqueada), un segundo intento de cierre pasados 2
+segundos la cierra igualmente.
 
 ## Controlar la ventana actual
 

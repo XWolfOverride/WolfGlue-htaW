@@ -52,8 +52,13 @@ Los errores (manifiesto no válido al empaquetar, etc.) salen en un aviso dentro
   acceso directo con ese id; queda para más adelante.)
 - Todos comparten la carpeta de datos del webview; cada app tiene su propio origen
   (`https://<id>.htaw.local/`), así que su almacenamiento web está aislado.
-- *(Pendiente)* `singleInstance: true`: la segunda ejecución pasaría sus argumentos a la primera por un canal
-  local y terminaría. Hoy el campo se lee pero no tiene efecto.
+- `singleInstance: true` (`Api/SingleInstance.cs`): la primera ejecución toma un mutex con nombre (`Local\htaW-<hash>`,
+  hash del id de la app, el usuario y la sesión) y atiende una tubería con nombre del mismo nombre (`CurrentUserOnly`;
+  en Linux y macOS .NET la implementa con un socket de dominio Unix). Las siguientes, al ver el mutex ocupado, se
+  conectan, reciben el PID de la primera (en Windows llaman a `AllowSetForegroundWindow` para que pueda ponerse
+  delante), le pasan `{ args, cwd }` en JSON y terminan con código 0. La primera pone delante su ventana principal y
+  emite `htaw.secondInstance`. Si la primera no contesta en 5 s, la segunda arranca normal. `relaunch()` suelta el
+  mutex antes de lanzar la nueva instancia.
 
 ## Asociación de archivos (`--register`)
 

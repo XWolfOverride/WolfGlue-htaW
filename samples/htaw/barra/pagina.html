@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Otra ventana</title>
+<!-- Barra propia de esta pagina; htaw.window.open puede cambiarla (titlebar: {...}) o quitarla (titlebar: false). -->
+<script type="application/htaw+json">
+{
+  "window": {
+    "titlebar": {
+      "mode": "compact",
+      "items": [
+        { "type": "button", "id": "home", "icon": "home", "text": "Inicio" },
+        { "type": "button", "id": "refresh", "icon": "refresh", "text": "Recargar" },
+        { "type": "space" },
+        { "type": "search", "id": "q", "placeholder": "Buscar en esta ventana" }
+      ]
+    }
+  }
+}
+</script>
+<style> body { padding: 16px 20px; } #log { white-space: pre-wrap; } </style>
+</head>
+<body>
+<p>Esta ventana es independiente: su barra no afecta a las demas.</p>
+<div id="log"></div>
+<script>
+  const log = (s) => { const l = document.getElementById("log"); l.textContent = s + "\n" + l.textContent; };
+  htaw.window.titlebar.on("click", (id, e) => log("click " + id + (e.button ? " (menu de " + e.button + ")" : "")));
+  htaw.window.titlebar.on("submit", (id, e) => log("submit " + e.value));
+</script>
+</body>
+</html>

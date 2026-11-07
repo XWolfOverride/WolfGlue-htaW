@@ -114,6 +114,17 @@ internal partial interface ICoreWebView2Settings
     void put_IsZoomControlEnabled([MarshalAs(UnmanagedType.Bool)] bool value);               // 15
 }
 
+/// <summary>Settings3, aplanada: 18 de Settings + 2 (Settings2) antes de AreBrowserAcceleratorKeysEnabled.</summary>
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
+[Guid("fdb5ab74-af33-4854-84f0-0a631deb5eba")]
+internal partial interface ICoreWebView2Settings3
+{
+    void _00(); void _01(); void _02(); void _03(); void _04(); void _05(); void _06(); void _07();
+    void _08(); void _09(); void _10(); void _11(); void _12(); void _13(); void _14(); void _15();
+    void _16(); void _17(); void _18(); void _19(); void _20();
+    void put_AreBrowserAcceleratorKeysEnabled([MarshalAs(UnmanagedType.Bool)] bool value);  // 21
+}
+
 /// <summary>
 /// Solo el miembro que se usa de Settings8, con la vtable aplanada: 18 de Settings + 2 (Settings2) + 2 (3) + 4 (4)
 /// + 2 (5) + 2 (6) + 2 (7) = 32 huecos antes de IsReputationCheckingRequired.

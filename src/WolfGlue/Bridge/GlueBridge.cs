@@ -131,6 +131,21 @@ public sealed class GlueBridge
     /// <summary>Indica si hay un metodo registrado con ese nombre.</summary>
     public bool Has(string name) => _methods.ContainsKey(name);
 
+    /// <summary>
+    /// Argumento <paramref name="index"/> de una llamada con parametros posicionales (<c>[a, b]</c>) o con nombre
+    /// (<c>{ nombre: a }</c>). Lo usa el codigo generado para las clases con <see cref="GlueServiceAttribute"/>.
+    /// </summary>
+    public T Arg<T>(JsonElement args, int index, string name)
+    {
+        var e = args.ValueKind switch
+        {
+            JsonValueKind.Array => index < args.GetArrayLength() ? args[index] : default,
+            JsonValueKind.Object => args.TryGetProperty(name, out var p) ? p : default,
+            _ => default,
+        };
+        return Deserialize(e, Info<T>());
+    }
+
     private T Deserialize<T>(JsonElement e, JsonTypeInfo<T> info)
     {
         if (e.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null) return default!;
@@ -267,6 +282,9 @@ public sealed class GlueBridge
 [JsonSerializable(typeof(WindowOpenArgs))]
 [JsonSerializable(typeof(WindowInfo))]
 [JsonSerializable(typeof(SizeArgs))]
+[JsonSerializable(typeof(GlueTitleBar))]
+[JsonSerializable(typeof(TitleBarUpdateArgs))]
+[JsonSerializable(typeof(GlueTitleBarEvent))]
 [JsonSerializable(typeof(WolfGlue.Native.FileDialogOptions))]
 [JsonSerializable(typeof(WolfGlue.Native.FolderDialogOptions))]
 [JsonSerializable(typeof(WolfGlue.Native.MessageOptions))]
@@ -284,6 +302,8 @@ internal sealed class WindowOpenArgs
     public int? Height { get; set; }
     public bool Modal { get; set; }
     public bool Resizable { get; set; } = true;
+    /// <summary>Barra de titulo: objeto = esa barra; false = ninguna (ni la de la pagina); ausente = la que declare la pagina.</summary>
+    public System.Text.Json.JsonElement? Titlebar { get; set; }
 }
 
 /// <summary>Datos de una ventana que se envian a la web.</summary>

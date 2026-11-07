@@ -48,7 +48,7 @@ Un HTML sin manifiesto también se abre, con valores por defecto (y un aviso en 
 | `window` | objeto | | Ventana principal (tabla siguiente). |
 | `theme` | `"native"` \| `"none"` | `"native"` | `native`: htaW inyecta su CSS con aspecto de sistema. `none`: la página se ve como una web normal. Ver [Aspecto nativo](06-estilo.md). |
 | `permissions` | lista | `[]` | Lo que la app puede hacer. Ver [Permisos](05-permisos.md). |
-| `singleInstance` | sí/no | `false` | Reservado: se lee pero aún no tiene efecto. |
+| `singleInstance` | sí/no | `false` | Instancia única: si la app ya está abierta (para este usuario), abrirla otra vez no crea otra copia; la que ya está se pone delante y recibe los argumentos con `htaw.app.on("secondInstance")`. |
 
 ### `window`
 
@@ -66,6 +66,7 @@ físicos. Se refieren al **área de contenido**, sin el marco ni la barra de tí
 | `background` | fondo de `htaw.css` | Color con el que aparece la ventana mientras carga la página: `#rgb`, `#rrggbb` o `light-dark(#claro, #oscuro)`. Ver «La aparición de la ventana». |
 | `fadeIn` | 150 | Duración en ms del fundido del contenido al aparecer (0 = sin fundido; máximo 2000). |
 | `center` | `true` | La ventana se abre centrada. |
+| `titlebar` | — | Botones y otros controles propios en la barra de título de la ventana principal. Ver [Barra de título](10-barra-de-titulo.md). Las demás páginas pueden declarar la suya en su bloque `<script type="application/htaw+json">`. |
 | `frame` | `"native"` | Reservado: `"none"` aún no está soportado (se usa el marco del sistema, con un aviso). |
 
 ### El icono

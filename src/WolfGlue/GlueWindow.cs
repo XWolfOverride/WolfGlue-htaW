@@ -60,7 +60,9 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
         if (_shown || _isClosed) return;
         _shown = true;
         App.Attach(this);
-        _background = ResolveBackground();
+        var html = StartPageHtml();
+        _background = ResolveBackground(html);
+        ApplyPageTitleBar(html);
         _native.Show();
     }
 
@@ -82,6 +84,54 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     /// <summary>Cierra sin preguntar a <see cref="Closing"/>.</summary>
     public void ForceClose() { _forceClose = true; Close(); }
 
+    // ------------------------------------------------------------- confirmacion de cierre por la pagina
+    private bool _pageGuardsClose, _pageApproved, _closeAcked;
+    private long _closeAskedAt;
+
+    /// <summary>
+    /// La pagina quiere decidir si la ventana se cierra (<c>glue.window.onClosing</c>). Se desactiva sola al navegar
+    /// a otra pagina.
+    /// </summary>
+    internal void SetPageGuardsClose(bool on)
+    {
+        _pageGuardsClose = on;
+        _closeAskedAt = 0;
+    }
+
+    /// <summary>La pagina ha recibido la peticion de cierre y la esta atendiendo (puede tardar: un dialogo).</summary>
+    internal void PageCloseAck() => _closeAcked = true;
+
+    /// <summary>Respuesta de la pagina: cerrar o no.</summary>
+    internal void PageCloseReply(bool close)
+    {
+        _closeAskedAt = 0;
+        if (!close) return;
+        _pageApproved = true;
+        Close();
+    }
+
+    /// <summary>
+    /// Cierre que se cierra sin preguntar a la pagina (lo pide la propia pagina con <c>glue.window.close</c>).
+    /// <see cref="Closing"/> de C# se sigue avisando.
+    /// </summary>
+    internal void CloseFromPage() { _pageApproved = true; Close(); }
+
+    /// <summary>
+    /// True si hay que esperar a la pagina. Si ya se le pregunto hace mas de 2 s y ni siquiera confirmo que lo atendia
+    /// (pagina colgada o rota), un nuevo intento de cierre ya no espera.
+    /// </summary>
+    private bool AskPageFirst()
+    {
+        if (!_pageGuardsClose || _pageApproved || !_ready) return false;
+        long now = Environment.TickCount64;
+        if (_closeAskedAt != 0)
+            return _closeAcked || now - _closeAskedAt < 2000; // atendiendo, o aun dentro del plazo
+        _closeAskedAt = now;
+        _closeAcked = false;
+        Emit("glue.closing", 0);
+        return true;
+    }
+
     public void SetSize(int width, int height) => _native.SetSize(width, height);
     public void Center() => _native.Center();
     public void Minimize() => _native.Minimize();
@@ -97,6 +147,80 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
 
     /// <summary>Envia un evento a esta ventana.</summary>
     public void Emit<T>(string name, T data) => SendToWeb(App.Bridge.EventMessage(name, data));
+
+    // ---------------------------------------------------------------- barra de titulo propia
+    /// <summary>Barra de titulo propia actual (null = la del sistema).</summary>
+    public GlueTitleBar? TitleBar => Options.TitleBar;
+
+    /// <summary>
+    /// Evento de la barra de titulo: clic, o cambio e Intro en la busqueda. Tambien llega a la web como
+    /// <c>glue.titlebar</c>.
+    /// </summary>
+    public event EventHandler<GlueTitleBarEvent>? TitleBarEvent;
+
+    /// <summary>Pone, sustituye o quita (null) la barra de titulo propia. Lanza <see cref="FormatException"/> si no es valida.</summary>
+    public void SetTitleBar(GlueTitleBar? bar)
+    {
+        App.CheckThread();
+        bar?.Validate();
+        Options.TitleBar = bar;
+        _native.SetTitleBar(bar);
+    }
+
+    /// <summary>Cambia texto, subtitulo, icono, ayuda, menu, habilitado o marcado de un elemento de la barra.</summary>
+    public void UpdateTitleBarItem(string id, GlueTitleBarUpdate changes)
+    {
+        App.CheckThread();
+        var bar = Options.TitleBar ?? throw new KeyNotFoundException("La ventana no tiene barra de titulo propia.");
+        var item = bar.Find(id) ?? throw new KeyNotFoundException("No hay ningun elemento con id " + id);
+        var copy = (Text: item.Text, Subtitle: item.Subtitle, Icon: item.Icon, Tooltip: item.Tooltip, Enabled: item.Enabled,
+            Checked: item.Checked, Menu: item.Menu);
+        if (changes.Text is { } t) item.Text = t.Length == 0 ? null : t;
+        if (changes.Subtitle is { } s) item.Subtitle = s.Length == 0 ? null : s;
+        if (changes.Icon is { } i) item.Icon = i.Length == 0 ? null : i;
+        if (changes.Tooltip is { } tt) item.Tooltip = tt.Length == 0 ? null : tt;
+        if (changes.Enabled is { } e) item.Enabled = e;
+        if (changes.Checked is { } c) item.Checked = c;
+        if (changes.Menu is { } m) item.Menu = m;
+        try { bar.Validate(); }
+        catch (FormatException)
+        {
+            (item.Text, item.Subtitle, item.Icon, item.Tooltip, item.Enabled, item.Checked, item.Menu) = copy;
+            throw;
+        }
+        _native.SetTitleBar(bar);
+    }
+
+    /// <summary>Da el foco a un elemento de la barra (el campo de busqueda).</summary>
+    public void FocusTitleBarItem(string id)
+    {
+        App.CheckThread();
+        if (Options.TitleBar?.Find(id) is null) throw new KeyNotFoundException("No hay ningun elemento con id " + id);
+        _native.FocusTitleBarItem(id);
+    }
+
+    void IWindowHost.OnTitleBarEvent(GlueTitleBarEvent e)
+    {
+        TitleBarEvent?.Invoke(this, e);
+        Emit("glue.titlebar", e);
+    }
+
+    async Task<byte[]?> IWindowHost.LoadTitleBarFileAsync(string src)
+    {
+        try
+        {
+            if (src.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                int comma = src.IndexOf(',');
+                return comma > 0 && src[..comma].EndsWith(";base64", StringComparison.OrdinalIgnoreCase)
+                    ? Convert.FromBase64String(src[(comma + 1)..]) : null;
+            }
+            var (path, query) = GlueRequest.SplitPath(src);
+            var r = await ((IWindowHost)this).HandleRequestAsync(new GlueRequest("GET", path, query, default));
+            return r.Status == 200 ? r.Body.ToArray() : null;
+        }
+        catch (Exception) { return null; }
+    }
 
     internal string ResolveUrl(string pageOrUrl) =>
         pageOrUrl.Contains("://", StringComparison.Ordinal) || pageOrUrl.StartsWith("about:", StringComparison.Ordinal)
@@ -121,7 +245,7 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     string IWindowHost.Origin => App.Origin;
     bool IWindowHost.DevTools => App.Options.DevTools;
     IReadOnlyList<string> IWindowHost.ExtraScripts => App.Scripts;
-    GlueBackground IWindowHost.Background => _background ??= ResolveBackground();
+    GlueBackground IWindowHost.Background => _background ??= ResolveBackground(StartPageHtml());
     byte[]? IWindowHost.Icon => Options.Icon ?? App.Options.Icon;
 
     private GlueBackground? _background;
@@ -130,24 +254,67 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     /// Opcion de la ventana; si no, <c>theme-color</c> de la pagina inicial (solo si el contenido la da sin esperar,
     /// para no retrasar la apertura); si no, el de la app; si no, el del sistema.
     /// </summary>
-    internal GlueBackground ResolveBackground()
+    internal GlueBackground ResolveBackground(string? html)
     {
         if (Options.Background is { } b) return b;
+        if (html is not null && GlueColorParser.ThemeColorFromHtml(html) is { } tc) return tc;
+        return App.Options.Background ?? GlueBackground.System;
+    }
+
+    /// <summary>HTML de la pagina inicial si es del origen propio y el contenido lo da sin esperar; si no, null.</summary>
+    private string? StartPageHtml()
+    {
+        var task = StartPageRequest();
+        return task is { IsCompletedSuccessfully: true } ? AsHtml(task.Value.Result) : null;
+    }
+
+    private ValueTask<GlueResponse>? StartPageRequest()
+    {
         try
         {
             var url = ResolveUrl(Options.StartPage);
-            if (IsSameOrigin(url, App.Origin))
-            {
-                var (path, query) = GlueRequest.SplitPath(url[App.Origin.Length..]);
-                var task = ((IWindowHost)this).HandleRequestAsync(new GlueRequest("GET", path, query, default));
-                if (task.IsCompletedSuccessfully && task.Result is { Status: 200 } r
-                    && r.ContentType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase)
-                    && GlueColorParser.ThemeColorFromHtml(System.Text.Encoding.UTF8.GetString(r.Body.Span)) is { } tc)
-                    return tc;
-            }
+            if (!IsSameOrigin(url, App.Origin)) return null;
+            var (path, query) = GlueRequest.SplitPath(url[App.Origin.Length..]);
+            return ((IWindowHost)this).HandleRequestAsync(new GlueRequest("GET", path, query, default));
         }
-        catch (Exception) { /* sin theme-color: se sigue con los valores por defecto */ }
-        return App.Options.Background ?? GlueBackground.System;
+        catch (Exception) { return null; }
+    }
+
+    private static string? AsHtml(GlueResponse r) =>
+        r is { Status: 200 } && r.ContentType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase)
+            ? System.Text.Encoding.UTF8.GetString(r.Body.Span) : null;
+
+    /// <summary>Barra de titulo declarada en la pagina inicial, si la ventana no trae una y lo permite.</summary>
+    private void ApplyPageTitleBar(string? html)
+    {
+        if (Options.TitleBar is not null || !Options.TitleBarFromPage || App.Options.PageTitleBar is null) return;
+        if (html is null)
+        {
+            // Contenido que no responde al momento (carpeta, disco): la barra se pone en cuanto llega la pagina.
+            if (StartPageRequest() is { IsCompleted: false } pending) _ = ApplyPageTitleBarLaterAsync(pending);
+            return;
+        }
+        SetPageTitleBar(html);
+    }
+
+    private async Task ApplyPageTitleBarLaterAsync(ValueTask<GlueResponse> pending)
+    {
+        string? html;
+        try { html = AsHtml(await pending); } catch (Exception) { return; }
+        if (html is not null && Options.TitleBar is null) SetPageTitleBar(html);
+    }
+
+    private void SetPageTitleBar(string html)
+    {
+        if (App.Options.PageTitleBar is not { } read) return;
+        try
+        {
+            if (read(html) is not { } bar) return;
+            bar.Validate();
+            Options.TitleBar = bar;
+            _native.SetTitleBar(bar);
+        }
+        catch (Exception) { /* barra de la pagina no valida: ventana con la barra del sistema */ }
     }
 
     void IWindowHost.OnWebViewReady()
@@ -166,9 +333,10 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     bool IWindowHost.OnCloseRequested()
     {
         if (_forceClose) return true;
+        if (AskPageFirst()) return false;
         var e = new CancelEventArgs();
         Closing?.Invoke(this, e);
-        if (e.Cancel) return false;
+        if (e.Cancel) { _pageApproved = false; return false; }
         // Las ventanas con esta como duena se cierran con ella.
         foreach (var w in App.Windows.Where(w => w.Options.Owner == this).ToArray()) w.ForceClose();
         return true;
@@ -220,7 +388,11 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     bool IWindowHost.OnNavigationStarting(string url, bool userInitiated)
     {
         if (IsTrustedUrl(url) || url.StartsWith("about:", StringComparison.Ordinal)
-            || url.StartsWith("data:", StringComparison.Ordinal)) return true;
+            || url.StartsWith("data:", StringComparison.Ordinal))
+        {
+            SetPageGuardsClose(false); // la pagina nueva se registra de nuevo si quiere
+            return true;
+        }
         OpenExternalFromPage(url, userInitiated);
         return false;
     }

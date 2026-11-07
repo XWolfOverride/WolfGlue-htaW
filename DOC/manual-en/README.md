@@ -23,8 +23,9 @@ This manual has two parts:
 8. [Development and distribution](08-development-and-distribution.md): development mode, debugging, packaged `.htaw`
    and portable executable.
 9. [Recipes](09-recipes.md): complete examples ready to copy.
+10. [Title bar with custom buttons](10-title-bar.md): buttons, groups, panel, search and image in each window's title bar.
 
-The examples in `samples/htaw` (`hola.htaw`, `markdown.htaw` and the `notas` folder) are real apps that use what is
+The examples in `samples/htaw` (`hola.htaw`, `markdown.htaw` and the `notas` and `barra` folders) are real apps that use what is
 explained here.
 
 > **Maintenance.** This manual describes everything htaW offers to users and to applications. Whenever htaW gains or

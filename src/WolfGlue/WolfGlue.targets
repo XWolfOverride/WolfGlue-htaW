@@ -18,6 +18,12 @@
     <ApplicationManifest Condition="'$(ApplicationManifest)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">$(MSBuildThisFileDirectory)app.manifest</ApplicationManifest>
   </PropertyGroup>
 
+  <!-- Generador del bridge: [GlueService] -> bridge.Register(servicio) y GlueServicesTypeScript (DOC/BRIDGE.md) -->
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\WolfGlue.Generators\WolfGlue.Generators.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
   <!-- Native AOT en Windows: loader de WebView2 enlazado estaticamente (un solo .exe) -->
   <ItemGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.StartsWith('win'))">
     <NativeLibrary Include="$(WolfGlueWebView2Dir)$(WolfGlueArch)\WebView2LoaderStatic.lib" />

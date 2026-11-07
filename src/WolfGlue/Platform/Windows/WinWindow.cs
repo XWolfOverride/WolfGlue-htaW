@@ -50,9 +50,62 @@ internal sealed class WinWindow : IPlatformWindow
         // fotograma (DefaultBackgroundColor no se aplica antes), asi que mientras tanto se ve el fondo de esta ventana.
         _container = Win32.CreateWindowExW(0, "STATIC", null, Win32.WS_CHILD | Win32.WS_CLIPCHILDREN,
             0, 0, 0, 0, Hwnd, 0, platform.HInstance, 0);
+        _titleText = o.Title ?? "";
         ApplyTheme();
         ApplyIcon();
+        if (o.TitleBar is { } bar) SetTitleBar(bar);
     }
+
+    // ------------------------------------------------------------- barra de titulo propia (WinTitleBar)
+    private WinTitleBar? _bar;
+    private string _titleText = "";
+    private bool _active = true;
+
+    internal IWindowHost Host => _host;
+    internal bool DarkMode => _platform.DarkMode;
+    internal GlueRgb BarBackground => Background;
+    internal bool Active => _active;
+    internal string TitleText => _titleText;
+    internal bool IsMaximized => Win32.IsZoomed(Hwnd);
+    internal bool HasMaximize => (_style & Win32.WS_MAXIMIZEBOX) != 0;
+    internal bool HasMinimize => (_style & Win32.WS_MINIMIZEBOX) != 0;
+    /// <summary>Icono pequeno: el propio o, si no hay, el de la clase (el del ejecutable).</summary>
+    internal nint IconSmall
+    {
+        get
+        {
+            if (_iconSmall != 0) return _iconSmall;
+            var h = Win32.SendMessageW(Hwnd, Win32.WM_GETICON, 2 /* ICON_SMALL2 */, 0);
+            if (h == 0) h = Win32.GetClassLongPtrW(Hwnd, -34 /* GCLP_HICONSM */);
+            if (h == 0) h = Win32.GetClassLongPtrW(Hwnd, -14 /* GCLP_HICON */);
+            return h;
+        }
+    }
+
+    /// <summary>Alto de la franja propia en pixeles fisicos (0 sin barra propia).</summary>
+    private int BarPx => _bar?.HeightPx ?? 0;
+
+    public void SetTitleBar(GlueTitleBar? bar)
+    {
+        if (_destroyed) return;
+        if (bar is null)
+        {
+            if (_bar is null) return;
+            _bar.Dispose();
+            _bar = null;
+        }
+        else if (_bar is null) _bar = new WinTitleBar(this, bar);
+        else _bar.Set(bar);
+        // Vuelve a calcular el area no cliente (WM_NCCALCSIZE) y recoloca el webview bajo la franja.
+        Win32.SetWindowPos(Hwnd, 0, 0, 0, 0, 0, Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE | Win32.SWP_FRAMECHANGED);
+        ResizeWebView();
+        Win32.InvalidateRect(Hwnd, 0, true);
+    }
+
+    public void FocusTitleBarItem(string id) => _bar?.Focus(id);
+
+    /// <summary>Devuelve el foco a la pagina (Escape en el campo de busqueda vacio).</summary>
+    internal void FocusContent() => _controller?.MoveFocus(WebView2Const.MOVE_FOCUS_REASON_PROGRAMMATIC);
 
     private readonly nint _container;
     private bool _contentShown;
@@ -79,6 +132,7 @@ internal sealed class WinWindow : IPlatformWindow
         Win32.SendMessageW(Hwnd, Win32.WM_SETICON, 1 /* ICON_BIG */, big);
         DestroyIcons();
         (_iconSmall, _iconBig) = (small, big);
+        _bar?.Invalidate();
     }
 
     private void DestroyIcons()
@@ -139,7 +193,13 @@ internal sealed class WinWindow : IPlatformWindow
         if (!_destroyed) Win32.PostMessageW(Hwnd, Win32.WM_CLOSE, 0, 0);
     }
 
-    public void SetTitle(string title) { if (!_destroyed) Win32.SetWindowTextW(Hwnd, title); }
+    public void SetTitle(string title)
+    {
+        if (_destroyed) return;
+        _titleText = title;
+        Win32.SetWindowTextW(Hwnd, title);
+        _bar?.Invalidate();
+    }
 
     public void SetSize(int width, int height)
     {
@@ -181,7 +241,7 @@ internal sealed class WinWindow : IPlatformWindow
     public void Reload() => _webview?.Reload();
 
     // ------------------------------------------------------------- tamano y posicion
-    private uint Dpi
+    internal uint Dpi
     {
         get
         {
@@ -196,6 +256,8 @@ internal sealed class WinWindow : IPlatformWindow
     {
         var r = new RECT { Right = Scale(width, dpi), Bottom = Scale(height, dpi) };
         Win32.AdjustWindowRectExForDpi(ref r, _style, false, _exStyle, dpi);
+        // Con barra propia no hay titulo ni borde superior del sistema: arriba va la franja (el contenido sigue midiendo lo pedido).
+        if (_bar is not null) { r.Bottom += Scale(WinTitleBar.LogicalHeightOf(_host.Options.TitleBar), dpi); r.Top = 0; }
         return r;
     }
 
@@ -253,15 +315,19 @@ internal sealed class WinWindow : IPlatformWindow
         var c = Background;
         var brush = Win32.CreateSolidBrush(c.R | (uint)c.G << 8 | (uint)c.B << 16);
         Win32.GetClientRect(Hwnd, out var r);
+        r.Top = BarPx; // la franja la pinta WinTitleBar (doble bufer, sin parpadeo)
         Win32.FillRect(hdc, ref r, brush);
         Win32.DeleteObject(brush);
     }
 
     private void ResizeWebView()
     {
-        Win32.GetClientRect(Hwnd, out var r);
-        Win32.SetWindowPos(_container, 0, 0, 0, r.Width, r.Height, Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
+        Win32.GetClientRect(Hwnd, out var c);
+        int top = BarPx;
+        var r = new RECT { Right = c.Width, Bottom = Math.Max(0, c.Height - top) };
+        Win32.SetWindowPos(_container, 0, 0, top, r.Width, r.Height, Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
         _controller?.put_Bounds(r);
+        _bar?.Invalidate();
     }
 
     // ------------------------------------------------------------- WebView2
@@ -294,6 +360,8 @@ internal sealed class WinWindow : IPlatformWindow
         s.put_IsStatusBarEnabled(false);
         s.put_IsZoomControlEnabled(false);
         // Comprobacion de reputacion de URL (SmartScreen): retrasa cada navegacion ~2 s y el contenido es propio.
+        // Teclas propias de navegador (F5, Ctrl+R, Ctrl+P, Ctrl+F, zoom, F12...): no existen en macOS ni Linux.
+        if (s is ICoreWebView2Settings3 s3) s3.put_AreBrowserAcceleratorKeysEnabled(((GlueWindow)_host).App.Options.BrowserKeys);
         if (s is ICoreWebView2Settings8 s8) s8.put_IsReputationCheckingRequired(((GlueWindow)_host).App.Options.UrlReputationCheck);
 
         wv.add_WebMessageReceived(new WebMessageReceivedHandler(OnWebMessage));
@@ -427,8 +495,97 @@ internal sealed class WinWindow : IPlatformWindow
         }
     }
 
+    /// <summary>Mensajes de la barra de titulo propia. Devuelve true si el mensaje queda atendido (con su resultado).</summary>
+    private unsafe bool HandleTitleBar(nint hwnd, uint msg, nint wParam, nint lParam, out nint result)
+    {
+        result = 0;
+        var bar = _bar!;
+        int x = (short)Win32.LOWORD(lParam), y = (short)Win32.HIWORD(lParam);
+        switch (msg)
+        {
+            case Win32.WM_NCCALCSIZE when wParam != 0:
+            {
+                // Bordes del sistema a izquierda, derecha y abajo; arriba nada (la franja es area de cliente). Maximizada,
+                // la ventana sobresale de la pantalla el grosor del marco: se compensa para que la franja se vea entera.
+                var p = (Win32.NCCALCSIZE_PARAMS*)lParam;
+                int top = p->rgrc0.Top;
+                Win32.DefWindowProcW(hwnd, msg, wParam, lParam);
+                p->rgrc0.Top = top;
+                if (Win32.IsZoomed(hwnd))
+                    p->rgrc0.Top += Win32.GetSystemMetricsForDpi(Win32.SM_CYFRAME, Dpi) + Win32.GetSystemMetricsForDpi(Win32.SM_CXPADDEDBORDER, Dpi);
+                return true;
+            }
+            case Win32.WM_NCHITTEST:
+            {
+                result = Win32.DefWindowProcW(hwnd, msg, wParam, lParam);
+                if (result != Win32.HTCLIENT) return true;
+                var pt = new Win32.POINT { X = x, Y = y };
+                Win32.ScreenToClient(hwnd, ref pt);
+                result = bar.HitTest(pt.X, pt.Y, (_style & Win32.WS_THICKFRAME) != 0);
+                return true;
+            }
+            case Win32.WM_PAINT:
+            {
+                var hdc = Win32.BeginPaint(hwnd, out var ps);
+                bar.Paint(hdc);
+                Win32.EndPaint(hwnd, ref ps);
+                return true;
+            }
+            case Win32.WM_ACTIVATE:
+                _active = Win32.LOWORD(wParam) != Win32.WA_INACTIVE;
+                bar.Invalidate();
+                return false;
+            case Win32.WM_MOUSEMOVE:
+                bar.OnMouseMove(x, y);
+                return false;
+            case Win32.WM_MOUSELEAVE:
+                bar.OnMouseLeave();
+                return true;
+            case Win32.WM_LBUTTONDOWN:
+            case Win32.WM_LBUTTONDBLCLK:
+                return bar.OnLButtonDown(x, y);
+            case Win32.WM_LBUTTONUP:
+                return bar.OnLButtonUp(x, y);
+            case Win32.WM_CAPTURECHANGED:
+                bar.OnCaptureLost();
+                return false;
+            case Win32.WM_NCMOUSEMOVE:
+                bar.OnNcMouseMove((int)wParam);
+                return false;
+            case Win32.WM_NCMOUSELEAVE:
+                bar.OnNcMouseLeave();
+                return false;
+            // El boton de maximizar se marca como tal (HTMAXBUTTON) para el menu de distribuciones de Windows 11, pero
+            // el clic lo gestiona la barra: el sistema pintaria encima su boton clasico.
+            case Win32.WM_NCLBUTTONDOWN when wParam == Win32.HTMAXBUTTON:
+            case Win32.WM_NCLBUTTONDBLCLK when wParam == Win32.HTMAXBUTTON:
+                bar.OnNcLButtonDown((int)wParam);
+                return true;
+            case Win32.WM_NCLBUTTONUP when wParam == Win32.HTMAXBUTTON:
+                bar.OnNcLButtonUp((int)wParam);
+                return true;
+            // Campo de busqueda (control EDIT hijo)
+            case Win32.WM_COMMAND:
+                return bar.OnCommand(wParam, lParam);
+            case Win32.WM_CTLCOLOREDIT:
+                result = bar.EditColors(wParam, lParam);
+                return result != 0;
+            case Win32.WM_TIMER when wParam == WinTitleBar.SearchTimerId:
+                bar.OnSearchTimer();
+                return true;
+            case WinTitleBar.MsgSearchSubmit:
+                bar.OnSearchSubmit();
+                return true;
+            case WinTitleBar.MsgSearchEscape:
+                bar.OnSearchEscape();
+                return true;
+        }
+        return false;
+    }
+
     private unsafe nint Handle(nint hwnd, uint msg, nint wParam, nint lParam)
     {
+        if (_bar is not null && HandleTitleBar(hwnd, msg, wParam, lParam, out var barResult)) return barResult;
         switch (msg)
         {
             case Win32.WM_SIZE:
@@ -449,6 +606,7 @@ internal sealed class WinWindow : IPlatformWindow
                 var r = (RECT*)lParam;
                 Win32.SetWindowPos(hwnd, 0, r->Left, r->Top, r->Width, r->Height, Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
                 ApplyIcon();
+                _bar?.OnDpiChanged();
                 return 0;
             }
 
@@ -506,6 +664,8 @@ internal sealed class WinWindow : IPlatformWindow
                 _webview = null;
                 Windows.Remove(hwnd);
                 DestroyIcons();
+                _bar?.Dispose();
+                _bar = null;
                 _host.OnClosed();
                 return 0;
         }

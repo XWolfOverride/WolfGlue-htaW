@@ -104,6 +104,11 @@
     dev: !!init.dev,
     quit: (code) => glue.quit(code || 0),
     relaunch: () => call("htaw.app.relaunch"),
+    // on("secondInstance", fn({ args, cwd })): la app se ha vuelto a abrir (solo con singleInstance)
+    on(type, fn) {
+      if (type !== "secondInstance") throw new Error("htaw.app.on: evento desconocido " + type);
+      return glue.on("htaw.secondInstance", fn);
+    },
   });
 
   const win = Object.freeze({
@@ -115,6 +120,10 @@
     maximize: glue.window.maximize,
     restore: glue.window.restore,
     close: glue.window.close,
+    // onClosing(fn): fn() (o su promesa) devuelve false para no cerrar; devuelve la funcion para quitarla
+    onClosing: glue.window.onClosing,
+    // Barra de titulo propia: set(definicion | null), update(id, cambios), focus(id), on(tipo, fn(id, {button, value}))
+    titlebar: glue.window.titlebar,
     // → { id, result }  (result: Promise con lo que la otra pagina pase a htaw.window.close(valor); null si no es modal)
     async open(page, options) {
       options = Object.assign({}, options);
@@ -216,6 +225,9 @@
   const clipboard = Object.freeze({
     readText: () => call("htaw.clipboard.readText"),
     writeText: (text) => call("htaw.clipboard.writeText", String(text)),
+    // → Blob (image/png) | null; writeImage acepta Blob, ArrayBuffer/Uint8Array, <img>, <canvas>, ImageBitmap o URL data:
+    readImage: async () => glue._image.fromBase64(await call("htaw.clipboard.readImage")),
+    writeImage: async (data) => call("htaw.clipboard.writeImage", await glue._image.toPngBase64(data)),
   });
 
   const env = Object.freeze(Object.assign({

@@ -48,7 +48,7 @@ An HTML file without a manifest also opens, with default values (and a warning i
 | `window` | object | | Main window (next table). |
 | `theme` | `"native"` \| `"none"` | `"native"` | `native`: htaW injects its CSS with a system look. `none`: the page looks like a normal website. See [Native look](06-style.md). |
 | `permissions` | list | `[]` | What the app is allowed to do. See [Permissions](05-permissions.md). |
-| `singleInstance` | yes/no | `false` | Reserved: read but has no effect yet. |
+| `singleInstance` | yes/no | `false` | Single instance: if the app is already open (for this user), opening it again does not create another copy; the running one comes to the front and receives the arguments through `htaw.app.on("secondInstance")`. |
 
 ### `window`
 
@@ -66,6 +66,7 @@ refer to the **content area**, without the frame or the title bar.
 | `background` | `htaw.css` background | Colour the window shows while the page loads: `#rgb`, `#rrggbb` or `light-dark(#light, #dark)`. See "How the window appears". |
 | `fadeIn` | 150 | Duration in ms of the content fade when it appears (0 = no fade; maximum 2000). |
 | `center` | `true` | The window opens centred. |
+| `titlebar` | — | Custom buttons and other controls in the main window's title bar. See [Title bar](10-title-bar.md). Other pages can declare their own in their `<script type="application/htaw+json">` block. |
 | `frame` | `"native"` | Reserved: `"none"` is not supported yet (the system frame is used, with a warning). |
 
 ### The icon

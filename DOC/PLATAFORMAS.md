@@ -56,6 +56,22 @@ La web se pinta con dos motores distintos (Chromium y WebKit), así que hay que 
 - El tamaño inicial de la ventana se pide en unidades lógicas y se convierte con
   `GetDpiForWindow` / `GetDpiForMonitor`.
 
+### Barra de título propia
+- Marco del sistema conservado y franja superior pintada por WolfGlue (`WM_NCCALCSIZE` / `WM_NCHITTEST`); detalle en
+  [BARRA-DE-TITULO.md](BARRA-DE-TITULO.md).
+
+### Teclas de navegador
+- `ICoreWebView2Settings3.AreBrowserAcceleratorKeysEnabled = GlueAppOptions.BrowserKeys` (falso por defecto): sin
+  F5/Ctrl+R, Ctrl+P, Ctrl+F, zoom ni F12, igual que WKWebView y WebKitGTK, que no las traen. La página sigue
+  recibiendo los `keydown`.
+
+### Portapapeles
+- Texto: `CF_UNICODETEXT`.
+- Imágenes: se escriben como formato registrado `PNG` (conserva la transparencia; lo usan navegadores y Office) y
+  `CF_DIB` de 32 bits (el resto). Al leer, se prefiere `PNG`; si no, `CF_DIBV5`/`CF_DIB`, decodificado con GDI+ y
+  recodificado a PNG con `Native/PngEncoder.cs` (un DIB de 32 bits con todo el alfa a 0 se trata como opaco).
+- Previsto en macOS: `NSPasteboard` con `public.png` (y TIFF al leer). En Linux: `gtk_clipboard_*_image` (GdkPixbuf).
+
 ### Tema
 - Barra de título oscura: `DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE_DARK_MODE)`, que se vuelve a
   aplicar cuando llega `WM_SETTINGCHANGE` con `ImmersiveColorSet`.

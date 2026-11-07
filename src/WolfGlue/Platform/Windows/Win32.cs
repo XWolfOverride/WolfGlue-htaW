@@ -132,6 +132,8 @@ internal static unsafe partial class Win32
     public static partial int GetSystemMetricsForDpi(int index, uint dpi);
     [LibraryImport("user32.dll")]
     public static partial nint LoadIconW(nint instance, nint name);
+    [LibraryImport("user32.dll")]
+    public static partial nint GetClassLongPtrW(nint hwnd, int index);
 
     [LibraryImport("user32.dll")]
     public static partial uint GetDpiForWindow(nint hwnd);
@@ -234,7 +236,11 @@ internal static unsafe partial class Win32
     public static partial int SHOpenFolderAndSelectItems(nint pidlFolder, uint count, nint children, uint flags);
 
     // ------------------------------------------------------------- portapapeles
-    public const uint CF_UNICODETEXT = 13, GMEM_MOVEABLE = 0x0002;
+    public const uint CF_UNICODETEXT = 13, CF_DIB = 8, CF_DIBV5 = 17, GMEM_MOVEABLE = 0x0002;
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial uint RegisterClipboardFormatW(string name);
+    [LibraryImport("kernel32.dll")]
+    public static partial nuint GlobalSize(nint mem);
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

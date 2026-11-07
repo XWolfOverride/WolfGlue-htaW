@@ -24,6 +24,8 @@ En modo desarrollo:
   cambios de 300 ms, porque los editores guardan en varios pasos). Las carpetas `.git` se ignoran.
 - **F12** abre DevTools (consola, inspector, red, depurador con puntos de ruptura) y el menú contextual del motor
   está activo.
+- Funcionan las **teclas de navegador**: F5 o Ctrl+R recargan, Ctrl+F busca en la página, Ctrl+P imprime, Ctrl+/−
+  cambian el zoom. Fuera del modo desarrollo están desactivadas (ver [La API](04-api.md#otras-capacidades-de-la-página)).
 - Los **avisos** del manifiesto salen en la consola con el prefijo `[htaW]`.
 - **No se pregunta por los permisos, pero se aplican**: una llamada sin permiso falla igual que en la versión final.
 - `htaw.app.dev` es `true`, por si quieres mostrar información de depuración.

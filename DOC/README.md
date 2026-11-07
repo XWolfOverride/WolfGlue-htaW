@@ -17,6 +17,7 @@ en [AGENTS.md](../AGENTS.md).
 |---|---|
 | [ARQUITECTURA.md](ARQUITECTURA.md) | Estructura del repo, capas, modelo de app y ventanas, hilos |
 | [PLATAFORMAS.md](PLATAFORMAS.md) | Detalle de Windows, Linux y macOS: APIs, DPI, problemas conocidos |
+| [BARRA-DE-TITULO.md](BARRA-DE-TITULO.md) | Barra de título con elementos propios: modelo común, implementación en Windows, previsto en macOS/Linux |
 | [BRIDGE.md](BRIDGE.md) | Comunicación web ↔ C#: protocolo, shim JS, host propio, seguridad |
 | [CONSUMO.md](CONSUMO.md) | Cómo usar WolfGlue como `ProjectReference` desde otro proyecto |
 | [manual/](manual/README.md) | **Manual de htaW**: uso, y guía completa para desarrollar apps (manifiesto, API, permisos, CSS, ventanas, distribución, recetas) |

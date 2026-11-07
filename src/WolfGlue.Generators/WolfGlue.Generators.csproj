@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Generador de codigo del bridge (Roslyn): lee las clases con [GlueService], genera su registro en GlueBridge y los
+    tipos TypeScript (.d.ts). Se carga como analizador: lo enlaza WolfGlue.targets en el proyecto de la aplicacion.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Sin seguimiento de versiones de reglas: el generador no se publica como paquete -->
+    <NoWarn>$(NoWarn);RS2008</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

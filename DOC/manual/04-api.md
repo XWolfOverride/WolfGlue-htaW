@@ -59,11 +59,13 @@ Datos de la aplicación. **Sin permiso.**
 | `dev` | `boolean` | `true` en modo desarrollo. |
 | `quit(code?)` | `Promise<void>` | Cierra la app entera con ese código de salida (0 por defecto). |
 | `relaunch()` | `Promise<void>` | Vuelve a abrir la app con los mismos argumentos (y modo) y cierra esta. |
+| `on("secondInstance", fn)` | `() => void` | Con `singleInstance`, la app se ha vuelto a abrir (por ejemplo, con otro archivo): `fn({ args, cwd })` recibe los argumentos de esa apertura y su carpeta actual (para resolver rutas relativas). La ventana principal ya se ha puesto delante. Devuelve la función para dejar de escuchar. |
 
 ```js
 document.title = `${htaw.app.name} ${htaw.app.version ?? ""}`;
 if (htaw.app.args.length) abrirArchivo(htaw.app.args[0]);   // p. ej. un archivo arrastrado sobre la app
 if (htaw.app.dev) console.log("Modo desarrollo");
+htaw.app.on("secondInstance", ({ args }) => { if (args.length) abrirArchivo(args[0]); });  // con singleInstance
 ```
 
 ---
@@ -79,11 +81,13 @@ La ventana de la página. **Sin permiso.** Más detalle y ejemplos en [Ventanas 
 | `setSize(ancho, alto)` | Cambia el tamaño del área de contenido (unidades lógicas). |
 | `center()` | Centra la ventana en su pantalla. |
 | `minimize()`, `maximize()`, `restore()` | Minimiza, maximiza o restaura. |
+| `onClosing(fn)` | Antes de cerrar la ventana porque lo pide el usuario o el sistema, se llama a `fn()`; si devuelve `false` (o una promesa que acaba en `false`), la ventana sigue abierta. Sirve para avisar de cambios sin guardar. `htaw.window.close()` no pregunta. Devuelve la función para quitarla. |
 | `close(resultado?)` | Cierra la ventana. En una ventana modal, `resultado` (cualquier valor JSON) llega a quien la abrió. Cerrar la última ventana cierra la app. |
 | `open(pagina, opciones?)` | Abre otra página de la app en una ventana nueva. Devuelve `{ id, result }`. |
+| `titlebar` | Barra de título propia de esta ventana: `set`, `update`, `focus` y `on`. Ver [Barra de título](10-barra-de-titulo.md). |
 
-Opciones de `open`: `title`, `width`, `height` (por defecto, los de la ventana que la abre), `resizable` (`true`) y
-`modal` (`false`). Con `modal: true` la ventana se abre encima de la actual, la bloquea mientras está abierta, y
+Opciones de `open`: `title`, `width`, `height` (por defecto, los de la ventana que la abre), `resizable` (`true`),
+`modal` (`false`) y `titlebar` (una barra propia, o `false` para la barra normal aunque la página declare una). Con `modal: true` la ventana se abre encima de la actual, la bloquea mientras está abierta, y
 `result` es una promesa con lo que la otra página pase a `htaw.window.close(valor)` (`null` si se cerró sin valor).
 
 ```js
@@ -340,11 +344,22 @@ propias o públicas que lo permitan no hace falta el permiso `http`.
 
 ## `htaw.clipboard`
 
-Portapapeles del sistema (texto). **Permiso `clipboard`.**
+Portapapeles del sistema: texto e imágenes. **Permiso `clipboard`.**
+
+| Función | Descripción |
+|---|---|
+| `readText()` → `string \| null` | Texto del portapapeles (`null` si no hay texto). |
+| `writeText(texto)` | Pone texto (sustituye lo que hubiera). |
+| `readImage()` → `Blob \| null` | Imagen del portapapeles, siempre como PNG (`image/png`); si se copió en otro formato (por ejemplo, una captura de pantalla), se convierte. `null` si no hay imagen. |
+| `writeImage(imagen)` | Pone una imagen. Admite `Blob`/`File`, `ArrayBuffer`/`Uint8Array` (bytes de un PNG, JPEG…), `<img>`, `<canvas>`, `ImageBitmap` o una URL `data:`; lo que no es PNG se convierte. Las demás aplicaciones la reciben con transparencia (si la admiten) o como mapa de bits. |
 
 ```js
 await htaw.clipboard.writeText(resultado);
 const pegado = await htaw.clipboard.readText();   // null si no hay texto
+
+const img = await htaw.clipboard.readImage();
+if (img) document.querySelector("img").src = URL.createObjectURL(img);
+await htaw.clipboard.writeImage(document.querySelector("canvas"));
 ```
 
 ---
@@ -414,6 +429,10 @@ document.getElementById("exportar").hidden = !htaw.has("fs");
   htaW; una URL externa (`http`, `https`, `mailto`) se abre en el navegador del sistema. Otros esquemas se ignoran.
   Las URL externas solo se abren si las pide el usuario con un clic o una tecla (salvo con el permiso `links.auto`,
   ver [Permisos](05-permisos.md#las-páginas-de-la-app)).
+- **Teclas de navegador desactivadas**: F5, Ctrl+R, Ctrl+P, Ctrl+F, el zoom con Ctrl y F12 no hacen nada (como en
+  las aplicaciones nativas, y como en macOS y Linux, cuyos motores no las tienen). La página sí recibe esas teclas en
+  `keydown`, así que puede darles su propio uso (por ejemplo, Ctrl+F para su buscador). Solo funcionan en modo
+  desarrollo.
 - **Mensajes entre ventanas**: `glue.emit` / `glue.on`, `BroadcastChannel` y el evento `storage`; ver
   [Ventanas y comunicación](07-ventanas.md).
 - **Objeto `glue`**: es la capa de WolfGlue sobre la que se construye `htaw`. De él solo conviene usar `glue.emit`,
@@ -422,7 +441,4 @@ document.getElementById("exportar").hidden = !htaw.has("fs");
 
 ## Lo que aún no existe
 
-- `htaw.window.onClosing(fn)`: avisar antes de cerrar la ventana para poder cancelarlo (por ejemplo, con cambios sin
-  guardar).
-- Instancia única (`singleInstance`) y el evento de «segunda instancia».
 - Ventana sin marco (`window.frame: "none"`).

@@ -1,0 +1,7 @@
+{
+  "id": "wolfglue.ejemplo.barra",
+  "name": "Barra de titulo",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": { "width": 1000, "height": 560, "minWidth": 520, "minHeight": 300 }
+}

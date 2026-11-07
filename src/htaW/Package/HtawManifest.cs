@@ -44,6 +44,13 @@ public sealed class HtawWindow
     /// <summary>Duracion del fundido de entrada en ms (0 = sin fundido; por defecto 150).</summary>
     public int FadeIn { get; set; } = 150;
 
+    /// <summary>Barra de titulo propia (mismo esquema que <see cref="WolfGlue.GlueTitleBar"/>, ver el manual).</summary>
+    public JsonElement? Titlebar { get; set; }
+
+    /// <summary><see cref="Titlebar"/> ya leida y validada.</summary>
+    [JsonIgnore]
+    public WolfGlue.GlueTitleBar? ParsedTitleBar { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }
@@ -108,6 +115,11 @@ public static partial class ManifestReader
         if (w.Background is not null && !WolfGlue.GlueBackground.TryParse(w.Background, out _))
             throw new HtawFormatException(Strings.ManifestBadValue("window.background", w.Background));
         if (w.FadeIn is < 0 or > 2000) throw new HtawFormatException(Strings.ManifestBadValue("window.fadeIn", w.FadeIn.ToString()));
+        if (w.Titlebar is { ValueKind: not JsonValueKind.Null } tb)
+        {
+            try { w.ParsedTitleBar = WolfGlue.GlueTitleBar.Parse(tb.GetRawText()); }
+            catch (FormatException e) { throw new HtawFormatException(Strings.ManifestBadValue("window.titlebar", e.Message)); }
+        }
         if (m.Icon is { Length: > 0 } icon)
         {
             if (IconSource.TryDataUrl(icon, out var data) ? data is null : Content.ContentPathCheck(icon) is null)

@@ -216,6 +216,118 @@ internal sealed unsafe class WinServices(WinPlatform platform) : IPlatformServic
         finally { Win32.CloseClipboard(); }
     }
 
+    /// <summary>Formato "PNG" que usan los navegadores y las aplicaciones de Office (conserva la transparencia).</summary>
+    private static readonly uint CfPng = Win32.RegisterClipboardFormatW("PNG");
+
+    private static byte[]? GlobalBytes(nint h)
+    {
+        var p = Win32.GlobalLock(h);
+        if (p == 0) return null;
+        try
+        {
+            var size = (int)Win32.GlobalSize(h);
+            var b = new byte[size];
+            Marshal.Copy(p, b, 0, size);
+            return b;
+        }
+        finally { Win32.GlobalUnlock(h); }
+    }
+
+    private static nint ToGlobal(ReadOnlySpan<byte> data)
+    {
+        var h = Win32.GlobalAlloc(Win32.GMEM_MOVEABLE, (nuint)data.Length);
+        if (h == 0) throw new OutOfMemoryException();
+        var p = (byte*)Win32.GlobalLock(h);
+        data.CopyTo(new Span<byte>(p, data.Length));
+        Win32.GlobalUnlock(h);
+        return h;
+    }
+
+    public byte[]? GetClipboardImage()
+    {
+        byte[]? png = null, dib = null;
+        if (!OpenClipboardRetry()) throw new IOException("No se pudo abrir el portapapeles.");
+        try
+        {
+            if (CfPng != 0 && Win32.GetClipboardData(CfPng) is var hp && hp != 0) png = GlobalBytes(hp);
+            if (png is null || !PngEncoder.IsPng(png))
+            {
+                png = null;
+                var hd = Win32.GetClipboardData(Win32.CF_DIBV5);
+                if (hd == 0) hd = Win32.GetClipboardData(Win32.CF_DIB);
+                if (hd != 0) dib = GlobalBytes(hd);
+            }
+        }
+        finally { Win32.CloseClipboard(); }
+        return png ?? (dib is null ? null : DibToPng(dib));
+    }
+
+    /// <summary>DIB del portapapeles (cabecera + tabla de colores + pixeles) a PNG, decodificado con GDI+.</summary>
+    internal static byte[]? DibToPng(byte[] dib)
+    {
+        if (dib.Length < 40) return null;
+        int header = BitConverter.ToInt32(dib, 0);
+        int bits = BitConverter.ToUInt16(dib, 14);
+        int compression = BitConverter.ToInt32(dib, 16);
+        int clrUsed = BitConverter.ToInt32(dib, 32);
+        int palette = bits <= 8 ? (clrUsed == 0 ? 1 << bits : clrUsed) * 4 : clrUsed * 4;
+        if (header == 40 && compression == 3 /* BI_BITFIELDS */) palette += 12;
+        // Archivo BMP = cabecera de archivo de 14 bytes + el DIB.
+        var bmp = new byte[14 + dib.Length];
+        bmp[0] = (byte)'B'; bmp[1] = (byte)'M';
+        BitConverter.TryWriteBytes(bmp.AsSpan(2), bmp.Length);
+        BitConverter.TryWriteBytes(bmp.AsSpan(10), 14 + header + palette);
+        dib.CopyTo(bmp, 14);
+        Gdip.Start();
+        var img = Gdip.Load(bmp);
+        if (img == 0) return null;
+        try
+        {
+            var (w, h, px) = Gdip.Pixels(img);
+            if (w == 0) return null;
+            // Muchas aplicaciones dejan el alfa a 0 en un DIB de 32 bits sin transparencia: se trata como opaco.
+            bool anyAlpha = false;
+            for (int i = 3; i < px.Length; i += 4) if (px[i] != 0) { anyAlpha = true; break; }
+            if (!anyAlpha) for (int i = 3; i < px.Length; i += 4) px[i] = 255;
+            return PngEncoder.FromBgra(px, w, h, w * 4);
+        }
+        finally { Gdip.Dispose(img); }
+    }
+
+    public void SetClipboardImage(byte[] png)
+    {
+        Gdip.Start();
+        var img = Gdip.Load(png);
+        if (img == 0) throw new ArgumentException("La imagen no es un PNG valido.");
+        int w, h;
+        byte[] px;
+        try { (w, h, px) = Gdip.Pixels(img); }
+        finally { Gdip.Dispose(img); }
+        // CF_DIB de 32 bits de abajo arriba, para las aplicaciones que no leen "PNG".
+        var dib = new byte[40 + px.Length];
+        BitConverter.TryWriteBytes(dib.AsSpan(0), 40);
+        BitConverter.TryWriteBytes(dib.AsSpan(4), w);
+        BitConverter.TryWriteBytes(dib.AsSpan(8), h);
+        BitConverter.TryWriteBytes(dib.AsSpan(12), (ushort)1);
+        BitConverter.TryWriteBytes(dib.AsSpan(14), (ushort)32);
+        BitConverter.TryWriteBytes(dib.AsSpan(20), px.Length);
+        for (int y = 0; y < h; y++) Buffer.BlockCopy(px, y * w * 4, dib, 40 + (h - 1 - y) * w * 4, w * 4);
+
+        if (!OpenClipboardRetry()) throw new IOException("No se pudo abrir el portapapeles.");
+        try
+        {
+            Win32.EmptyClipboard();
+            var hd = ToGlobal(dib);
+            if (Win32.SetClipboardData(Win32.CF_DIB, hd) == 0) { Win32.GlobalFree(hd); throw new IOException("No se pudo escribir en el portapapeles."); }
+            if (CfPng != 0)
+            {
+                var hp = ToGlobal(png);
+                if (Win32.SetClipboardData(CfPng, hp) == 0) Win32.GlobalFree(hp);
+            }
+        }
+        finally { Win32.CloseClipboard(); }
+    }
+
     // ------------------------------------------------------------- pantallas
     public IReadOnlyList<ScreenInfo> GetScreens()
     {

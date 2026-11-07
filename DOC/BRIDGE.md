@@ -36,7 +36,11 @@ glue.quit(codigo)
 glue.window.id                                                  // "w1", "w2"…
 glue.window.close(resultado?)                                   // resultado (JSON) para quien abrió el diálogo
 glue.window.setTitle(t) / setSize(w, h) / center() / minimize() / maximize() / restore() / devtools()
-await glue.window.open("pagina.html", { width, height, title, resizable })   // → id de la ventana nueva
+glue.window.onClosing(fn)   // fn() → false o Promise<false> cancela el cierre del usuario/sistema. Protocolo: guardClose(true)
+                            // al registrar; el host emite glue.closing, la pagina responde closeAck y closeReply(bool);
+                            // sin closeAck en 2 s, otro intento de cierre ya no espera. Se desactiva al navegar.
+await glue.window.open("pagina.html", { width, height, title, resizable, titlebar })   // → id de la ventana nueva
+glue.window.titlebar.set(barra | null) / update(id, cambios) / focus(id) / on(tipo, fn)   // ver BARRA-DE-TITULO.md
 await glue.window.dialog("pagina.html", { ... })                // modal; → resultado de close() o null
 ```
 
@@ -52,6 +56,8 @@ await glue.dialog.message("texto", { title, kind: "question", buttons: "yesNoCan
                                                    // buttons: ok|okCancel|yesNo|yesNoCancel → "ok"|"cancel"|"yes"|"no"
 await glue.clipboard.readText()                    // → string | null
 await glue.clipboard.writeText("…")
+await glue.clipboard.readImage()                   // → Blob image/png | null (viaja como PNG en base64)
+await glue.clipboard.writeImage(blobCanvasImgOBytes) // se convierte a PNG en la pagina (OffscreenCanvas)
 await glue.screens()                               // → [{ bounds:{x,y,width,height}, workArea, scale, primary }]
 await glue.theme()                                 // → { dark, accent:"#RRGGBB", fontFamily, fontSize, highContrast }
 glue.on("glue.theme", t => …)                      // cuando cambia el tema del sistema
@@ -105,8 +111,48 @@ app.Emit("hora", "12:00");                                                     /
 - `ctx.Window` es la ventana que hizo la llamada (para abrir diálogos modales sobre ella) y
   `ctx.Cancellation` se cancela si la ventana se cierra.
 - Los manejadores corren en el hilo de UI y sus `await` vuelven a él.
-- **Fase posterior:** generador de código que lee `[GlueService]` / `[GlueMethod]` en una clase,
-  genera el registro y produce un `.d.ts` con los tipos para el front.
+
+## Servicios generados (`[GlueService]`)
+
+`src/WolfGlue.Generators` es un generador de Roslyn (incremental, `netstandard2.0`) que `WolfGlue.targets` enlaza
+como analizador en el proyecto de la aplicación. Sin reflexión: el registro se escribe al compilar (Native AOT).
+
+```csharp
+/// <summary>Lista de tareas.</summary>            // el resumen pasa al .d.ts como JSDoc
+[GlueService]                                      // nombre: clase sin "Service", en camelCase → "tareas"
+public sealed class TareasService                  // [GlueService("otro")] para elegirlo
+{
+    public Tarea[] Listar() => ...;                // tareas.listar()
+    public Tarea Anadir(string texto) => ...;      // tareas.anadir(texto)
+    public async Task<bool> MarcarAsync(int id, bool hecha, CancellationToken c) { ... }  // tareas.marcar(id, hecha)
+    [GlueIgnore] public void Interno() { }         // no se expone
+}
+
+app.Bridge.UseJson(MiJson.Default);                // Tarea y Tarea[] en el contexto de la app, como siempre
+app.Bridge.Register(new TareasService());          // generado: un Register por método
+#if DEBUG
+GlueServicesTypeScript.Write("web/glue-services.d.ts");   // tipos para el editor, si han cambiado
+#endif
+```
+
+```js
+/// <reference path="glue-services.d.ts" />
+const t = await glue.services.tareas.anadir("Comprar pan");   // → call("tareas.anadir", ["Comprar pan"])
+```
+
+- Métodos públicos de instancia, no genéricos; el nombre en la web va en camelCase y sin el sufijo `Async`.
+  Sobrecargas (WG001) y parámetros `ref`/`out`/`params` (WG002) son errores de compilación.
+- Parámetros posicionales (`[a, b]`; también vale un objeto con sus nombres). `GlueCallContext`,
+  `CancellationToken` (`ctx.Cancellation`) y `GlueWindow` (`ctx.Window`) se inyectan y no cuentan.
+  Los parámetros que faltan llegan con su valor por defecto de tipo (`null`, 0).
+- Resultados: `void`, `T`, `Task`, `Task<T>`, `ValueTask`, `ValueTask<T>`.
+- `.d.ts`: `interface GlueServices` (lo que hay en `glue.services`), los tipos propios en `namespace GlueTypes`
+  (propiedades públicas en camelCase, `[JsonPropertyName]` y `[JsonIgnore]` respetados) y `declare const glue`.
+  Correspondencias: números → `number`, `string`/`char`/fechas/`Guid` → `string`, `byte[]` → `string` (base64),
+  colecciones → `T[]`, diccionarios → `Record<string, T>`, `T?` → `T | null`, enums → `number` (como los serializa
+  System.Text.Json por defecto), `JsonElement`/`object` → `any`.
+- En JS, `glue.services` es un `Proxy`: cualquier `glue.services.x.y(...)` se convierte en `call("x.y", [...])`.
+- Pruebas: `tests/WolfGlue.Tests/GeneratorTests.cs`. Ejemplo: `samples/Hola` (`TareasService`).
 
 ## Binarios y datos grandes
 

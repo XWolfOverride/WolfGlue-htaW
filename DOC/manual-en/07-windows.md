@@ -12,11 +12,12 @@ const { id } = await htaw.window.open("history.html", { title: "History", width:
 - `page`: path of a page of the app, relative to the root (`"history.html"`, `"views/detail.html?id=3"`). Pages from
   outside the app cannot be opened in an htaW window.
 - Options: `title` (otherwise, the page's `<title>`), `width`, `height` (by default, those of the current window),
-  `resizable` (`true`), `modal` (`false`).
+  `resizable` (`true`), `modal` (`false`), `titlebar` (a custom title bar, or `false`).
 - `window.open("history.html")` and links with `target="_blank"` do the same (external URLs open in the system
   browser when the user asks with a click or a key press).
 
-The new window has the same icon and the same look as the main one.
+The new window has the same icon and the same look as the main one. Its title bar is the one its page declares (or
+the one in the `titlebar` option); each window has its own or the normal system one. See [Title bar](10-title-bar.md).
 
 ## Custom dialogs with a result (modal windows)
 
@@ -97,6 +98,22 @@ channel.onmessage = (e) => console.log(e.data);
 
 addEventListener("storage", (e) => { if (e.key === "app-theme") apply(e.newValue); });
 ```
+
+## Warning before closing
+
+```js
+let modified = false;
+htaw.window.onClosing(async () => {
+  if (!modified) return;                         // nothing to lose: it closes
+  const r = await htaw.dialog.message("There are unsaved changes. Close anyway?",
+    { kind: "warning", buttons: "yesNo" });      // needs the "dialog" permission
+  return r === "yes";                            // false: the window stays open
+});
+```
+
+It is called when the user closes the window (button, Alt+F4, taskbar) or the system asks; not when the page itself
+calls `htaw.window.close()`. If the page does not respond (hung), a second close attempt after 2 seconds closes it
+anyway.
 
 ## Controlling the current window
 

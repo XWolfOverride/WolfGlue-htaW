@@ -1,3 +1,4 @@
+/// <reference path="glue-services.d.ts" />
 const $ = (id) => document.getElementById(id);
 const out = (v) => { $("salida").textContent = typeof v === "string" ? v : JSON.stringify(v, null, 2); };
 
@@ -14,6 +15,12 @@ glue.on("hola.aviso", (texto, from) => {
 
 $("saludar").onclick = async () => out(await glue.call("hola.saludo", $("nombre").value));
 $("info").onclick = async () => out(await glue.call("hola.info"));
+// Servicio C# con [GlueService] (tipos en web/glue-services.d.ts, generado al depurar)
+$("tareas").onclick = async () => {
+  const t = await glue.services.tareas.anadir("Tarea " + new Date().toLocaleTimeString());
+  await glue.services.tareas.marcar(t.id, t.id % 2 === 0);
+  out(await glue.services.tareas.listar());
+};
 $("falla").onclick = async () => {
   try { await glue.call("hola.falla"); }
   catch (e) { out(`Error ${e.code}: ${e.message}`); }

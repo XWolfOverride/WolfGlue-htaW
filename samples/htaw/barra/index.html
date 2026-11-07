@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Barra de titulo</title>
+<!-- La barra de esta ventana se declara aqui (window.titlebar); el resto del manifiesto esta en htaw.json. -->
+<script type="application/htaw+json">
+{
+  "window": {
+    "titlebar": {
+      "mode": "labels",
+      "items": [
+        { "type": "image", "icon": "img/logo.png", "color": true, "id": "logo", "tooltip": "Acerca de" },
+        { "type": "button", "id": "open", "icon": "open", "text": "Abrir" },
+        { "type": "button", "id": "save", "icon": "save", "text": "Guardar" },
+        { "type": "group", "text": "Editar", "items": [
+          { "type": "button", "id": "cut", "icon": "cut", "text": "Cortar" },
+          { "type": "button", "id": "copy", "icon": "copy", "text": "Copiar" },
+          { "type": "button", "id": "paste", "icon": "paste", "text": "Pegar" }
+        ] },
+        { "type": "panel", "id": "repo", "text": "WolfGlue", "subtitle": "rama main", "icon": "folder", "center": true,
+          "menu": [ { "id": "repo-a", "text": "WolfGlue", "checked": true }, { "id": "repo-b", "text": "DIV2" } ] },
+        { "type": "button", "id": "sync", "icon": "sync", "text": "Sincronizar", "split": true,
+          "menu": [ { "id": "pull", "text": "Traer cambios" }, { "type": "separator" }, { "id": "push", "text": "Enviar cambios" } ] },
+        { "type": "button", "id": "bolt", "icon": "img/rayo.png", "text": "Rayo", "toggle": true },
+        { "type": "search", "id": "q", "placeholder": "Buscar", "width": 200 }
+      ]
+    }
+  }
+}
+</script>
+<style>
+  body { padding: 16px 20px; }
+  #log { font-family: var(--htaw-mono, monospace); white-space: pre-wrap; height: 220px; overflow: auto; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+</style>
+</head>
+<body>
+<h2>Barra de titulo propia</h2>
+<p>Cada ventana tiene su barra: esta viene del bloque del <code>&lt;head&gt;</code>; las otras, de su propia pagina,
+  de <code>htaw.window.open</code> o de un cambio en caliente.</p>
+<div class="row">
+  <button id="b-page">Ventana con su barra (compact)</button>
+  <button id="b-open">Ventana con barra de open (title)</button>
+  <button id="b-none">Ventana normal</button>
+  <button id="b-hot">Cambiar en caliente</button>
+  <button id="b-focus">Foco en la busqueda</button>
+</div>
+<div id="log" class="htaw-panel"></div>
+<script>
+  const tb = htaw.window.titlebar;
+  const log = (s) => { const l = document.getElementById("log"); l.textContent = s + "\n" + l.textContent; };
+  let bolt = false;
+  tb.on("click", (id, e) => {
+    log("click " + id + (e.button ? " (menu de " + e.button + ")" : ""));
+    if (id === "bolt") { bolt = !bolt; tb.update("bolt", { checked: bolt }); }
+    if (id === "repo-a" || id === "repo-b") {
+      const name = id === "repo-a" ? "WolfGlue" : "DIV2";
+      tb.update("repo", { text: name, menu: [
+        { id: "repo-a", text: "WolfGlue", checked: id === "repo-a" }, { id: "repo-b", text: "DIV2", checked: id === "repo-b" } ] });
+    }
+  });
+  tb.on("input", (id, e) => log("input " + id + ": " + e.value));
+  tb.on("submit", (id, e) => log("submit " + id + ": " + e.value));
+  document.getElementById("b-page").onclick = () => htaw.window.open("pagina.html", { width: 760, height: 420 });
+  document.getElementById("b-open").onclick = () => htaw.window.open("pagina.html", { width: 640, height: 380, title: "Modo title",
+    titlebar: { mode: "title", items: [
+      { type: "button", id: "fb", icon: "emoji", text: "Opinar" },
+      { type: "button", id: "more", icon: "more", text: "Mas", menu: [ { id: "m1", text: "Opcion 1" }, { id: "m2", text: "Opcion 2" } ] } ] } });
+  document.getElementById("b-none").onclick = () => htaw.window.open("pagina.html", { width: 560, height: 340, title: "Normal", titlebar: false });
+  let compact = false;
+  document.getElementById("b-hot").onclick = () => {
+    compact = !compact;
+    tb.set(compact ? { mode: "compact", items: [
+      { type: "button", id: "back", icon: "back", text: "Atras" },
+      { type: "button", id: "fwd", icon: "forward", text: "Adelante", enabled: false },
+      { type: "space" },
+      { type: "panel", text: "Compacta", subtitle: "cambiada en caliente", width: 200 },
+      { type: "space" },
+      { type: "search", id: "q", placeholder: "Filtrar" } ] } : null);
+    log(compact ? "barra compacta" : "barra quitada (barra del sistema)");
+  };
+  document.getElementById("b-focus").onclick = () => tb.focus("q");
+</script>
+</body>
+</html>

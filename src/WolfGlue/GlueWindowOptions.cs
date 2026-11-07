@@ -64,4 +64,16 @@ public sealed class GlueWindowOptions
     /// contenido); si no, aparece con <see cref="Background"/> y la pagina entra con el fundido. 0 = mostrar al momento.
     /// </summary>
     public int ShowDelayMs { get; set; } = 500;
+
+    /// <summary>
+    /// Barra de titulo con elementos propios (botones, grupos…) dibujada por WolfGlue. Null = barra normal del sistema.
+    /// Se puede cambiar despues con <see cref="GlueWindow.SetTitleBar"/>.
+    /// </summary>
+    public GlueTitleBar? TitleBar { get; set; }
+
+    /// <summary>
+    /// Si no hay <see cref="TitleBar"/>, usar la que declare la pagina inicial (ver <see cref="GlueAppOptions.PageTitleBar"/>).
+    /// Por defecto, si.
+    /// </summary>
+    public bool TitleBarFromPage { get; set; } = true;
 }

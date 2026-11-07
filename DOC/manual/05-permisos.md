@@ -9,7 +9,7 @@ en `permissions`**. Pide solo lo que de verdad uses: es lo que verá el usuario 
 |---|---|---|
 | `fs` | `htaw.fs` (leer, escribir, listar, borrar, vigilar archivos) | Leer y escribir archivos |
 | `dialog` | `htaw.dialog` (abrir, guardar, carpeta, mensajes) | Mostrar diálogos del sistema |
-| `clipboard` | `htaw.clipboard` | Leer y escribir el portapapeles |
+| `clipboard` | `htaw.clipboard` | Leer y escribir el portapapeles (texto e imágenes) |
 | `http` | `htaw.http.fetch` (sin CORS) | Conectarse a Internet sin restricciones |
 | `env` | `htaw.env` (variables de entorno y carpetas del usuario) | Leer variables de entorno y carpetas del usuario |
 | `shell.open` | `htaw.shell.open` y `htaw.shell.reveal` | Abrir archivos y direcciones con otras aplicaciones |

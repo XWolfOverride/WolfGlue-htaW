@@ -35,6 +35,8 @@ el **proyecto que se publica**, no en la biblioteca. `WolfGlue.targets` se encar
 - Manifiesto de aplicación por defecto (`app.manifest`: PerMonitorV2, Common Controls v6), si el proyecto no tiene uno.
 - La lib y la DLL salen del paquete `Microsoft.Web.WebView2`, que WolfGlue solo **descarga**
   (`PackageDownload`, versión en `WolfGlue.props`); no se referencia ningún ensamblado suyo.
+- Enlazar el generador del bridge (`src/WolfGlue.Generators`, como analizador): clases con `[GlueService]` →
+  `bridge.Register(servicio)` y `GlueServicesTypeScript` (ver BRIDGE.md).
 - *(Previsto)* macOS (`osx-*`): montaje del bundle `.app`.
 
 Propiedades recomendadas en la aplicación: `OutputType=WinExe`, `PublishAot=true` y, si no hace falta

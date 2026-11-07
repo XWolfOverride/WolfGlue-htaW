@@ -16,7 +16,7 @@ Las funciones devuelven promesas salvo las propiedades. Cada grupo exige el perm
 | `htaw.shell` | `shell.open` / `shell.exec` | `open(urlOArchivo)`, `reveal(ruta)`, `exec(nombre, args, o)`, `spawn(nombre, args, o)` |
 | `htaw.settings` | — | `get(clave, porDefecto?)`, `set(clave, valor)`, `remove(clave)`, `all()` |
 | `htaw.http` | `http` | `fetch(url, o)` sin CORS |
-| `htaw.clipboard` | `clipboard` | `readText()`, `writeText(texto)` |
+| `htaw.clipboard` | `clipboard` | `readText()`, `writeText(texto)`, `readImage()` → Blob PNG, `writeImage(imagen)` |
 | `htaw.theme` | — | `dark`, `accent`, `fontFamily`, `fontSize`, `highContrast`, `os`, `on("change", fn)` |
 | `htaw.env` | `env` | `get(nombre)`; con el permiso, además `home`, `temp`, `documents`, `os`, `arch` |
 | `htaw.permissions` | — | permisos concedidos en forma canónica (`"fs"`, `"shell.exec:git"`, `"shell.exec:*"`); `htaw.has(p)` |
@@ -65,6 +65,9 @@ r.status; r.ok; r.headers["content-type"]; r.body; r.json();
 const w = await htaw.window.open("ajustes.html", { width: 400, height: 300, modal: true, resizable: false });
 const resultado = await w.result;   // lo que la otra página pase a htaw.window.close(valor); null si se cerró sin valor
 const n = await htaw.window.open("otra.html");   // no modal: { id, result: null }
+htaw.window.onClosing(() => !modificado || confirmarCierre());   // false: no se cierra (glue.closing → closeReply)
+htaw.app.on("secondInstance", ({ args, cwd }) => abrir(args));   // solo con singleInstance
+// Barra de título propia: htaw.window.titlebar (set, update, focus, on); ver manual/10-barra-de-titulo.md
 ```
 
 `window.open` estándar también crea una ventana de htaW.
@@ -82,8 +85,3 @@ cambios. El CSS de htaW ya lo aplica (ver HTAW-ESTILO.md).
 
 `Error` con `code` (`PermissionDenied`, `NotFound`, `AccessDenied`, `Timeout`, `Cancelled`, `InvalidArgument`,
 `IOError`, `MethodNotFound`, `Error`) y `message` en el idioma de la interfaz.
-
-## Pendiente
-
-- `htaw.window.onClosing(fn)` (cancelar el cierre desde la página).
-- Evento `secondInstance` (depende de la instancia única, ver HTAW-INTEGRACION.md).

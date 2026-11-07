@@ -95,6 +95,17 @@ public sealed class NativeClipboard
         _app.Platform.Services.SetClipboardText(text);
         return true;
     });
+
+    /// <summary>Imagen del portapapeles como PNG (convertida si estaba en otro formato), o null si no hay imagen.</summary>
+    public Task<byte[]?> GetImageAsync() => GlueNative.OnUi(_app, () => _app.Platform.Services.GetClipboardImage());
+
+    /// <summary>Pone una imagen PNG en el portapapeles. Lanza <see cref="ArgumentException"/> si no es un PNG valido.</summary>
+    public Task SetImageAsync(byte[] png) => GlueNative.OnUi(_app, () =>
+    {
+        if (!PngEncoder.IsPng(png)) throw new ArgumentException("La imagen no es un PNG valido.");
+        _app.Platform.Services.SetClipboardImage(png);
+        return true;
+    });
 }
 
 /// <summary>Monitores conectados.</summary>

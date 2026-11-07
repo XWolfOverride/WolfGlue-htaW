@@ -7,7 +7,7 @@ WolfGlue/
 ├─ src/
 │  ├─ WolfGlue/                 biblioteca: núcleo + backends Windows/Linux/macOS
 │  │  └─ WolfGlue.targets       lo que debe importar el proyecto consumidor (ver CONSUMO.md)
-│  ├─ WolfGlue.Generators/      generador de código del bridge y de .d.ts (fase posterior)
+│  ├─ WolfGlue.Generators/      generador de Roslyn: [GlueService] → registro en el bridge y .d.ts
 │  └─ htaW/                     ejecutable htaw (WinExe, Native AOT)
 │     ├─ Program.cs, Cli.cs     línea de comandos
 │     ├─ Launcher.cs            panel sin argumentos (Assets/launcher.html)

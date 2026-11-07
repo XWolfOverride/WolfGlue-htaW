@@ -35,6 +35,13 @@ internal static class Program
         // Tema del sistema: aviso en la consola cuando cambia (la web recibe "glue.theme")
         app.Native.Theme.Changed += t => Console.WriteLine($"Tema: oscuro={t.Dark}, acento={t.Accent}");
 
+        // Servicio con [GlueService]: el generador registra sus metodos como "tareas.*" (glue.services.tareas en la web)
+        app.Bridge.Register(new TareasService());
+#if DEBUG
+        // Tipos TypeScript de glue.services para el editor (solo al depurar, desde la carpeta del proyecto)
+        if (Directory.Exists("web")) GlueServicesTypeScript.Write("web/glue-services.d.ts");
+#endif
+
         // Evento enviado desde la web a C#
         app.Bridge.On<string>("hola.log", (texto, ctx) => Console.WriteLine($"[{ctx.Window?.Id}] {texto}"));
 
@@ -49,6 +56,39 @@ internal static class Program
 
 internal sealed record Info(string Estado, int Procesadores, int Ventanas, string Ventana);
 
+/// <summary>Una tarea pendiente.</summary>
+public sealed record Tarea(int Id, string Texto, bool Hecha);
+
+/// <summary>Lista de tareas en memoria, expuesta a la web con el generador del bridge.</summary>
+[GlueService]
+public sealed class TareasService
+{
+    private readonly List<Tarea> _tareas = [];
+
+    /// <summary>Todas las tareas.</summary>
+    public Tarea[] Listar() => [.. _tareas];
+
+    /// <summary>Anade una tarea y la devuelve.</summary>
+    public Tarea Anadir(string texto)
+    {
+        var t = new Tarea(_tareas.Count + 1, texto, false);
+        _tareas.Add(t);
+        return t;
+    }
+
+    /// <summary>Marca o desmarca una tarea.</summary>
+    public async Task<bool> MarcarAsync(int id, bool hecha)
+    {
+        await Task.Delay(50);
+        int i = _tareas.FindIndex(t => t.Id == id);
+        if (i < 0) return false;
+        _tareas[i] = _tareas[i] with { Hecha = hecha };
+        return true;
+    }
+}
+
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(Info))]
+[JsonSerializable(typeof(Tarea))]
+[JsonSerializable(typeof(Tarea[]))]
 internal partial class HolaJson : JsonSerializerContext;

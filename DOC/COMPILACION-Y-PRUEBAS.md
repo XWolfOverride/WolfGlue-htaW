@@ -32,17 +32,17 @@ dotnet publish src/htaW -c Release -r win-x64               # htaW AOT (vswhere 
   runtime de WebView2; usa el repo actual o clona/actualiza; publica `src/htaW/htaW.csproj` con AOT, copia
   `htaw.exe` a la raíz y explica cómo instalarlo en el `PATH` y asociar `.htaw`. Para forks: `WOLFGLUE_REPO_URL`.
 - `build.sh` (previsto, con los backends de Linux y macOS): lo mismo; en macOS montará `htaW.app`.
-- Tamaños con AOT: `htaw.exe` ~8,4 MB; el ejemplo `hola.exe` ~3,9 MB. Sin avisos de AOT.
+- Tamaños con AOT: `htaw.exe` ~9,3 MB; el ejemplo `hola.exe` ~3,9 MB. Sin avisos de AOT.
 - `samples/htaw/notas.htaw` se genera con `htaw pack samples/htaw/notas` (está en `.gitignore`).
 
 ## Pruebas
 
 ### Automáticas (xUnit)
-- `tests/WolfGlue.Tests` (86 pruebas, pasan): protocolo del bridge (resultados, tipos propios, errores con
+- `tests/WolfGlue.Tests` (130 pruebas, pasan): generador de servicios del bridge, imagen del portapapeles (PNG/DIB), barra de título (validación, iconos, nombre de fuente), protocolo del bridge (resultados, tipos propios, errores con
   código, mensajes mal formados, ventana cerrada, eventos y reenvío, `UseJson`), tabla MIME, normalización de
   rutas, proveedores de contenido (recursos, carpeta, compuesto; rechazo de `..`), comprobación de origen, y
   tipos de los servicios nativos (patrones de filtro, forma JSON de opciones y resultados).
-- `tests/htaW.Tests` (117 pruebas, pasan): línea de comandos, extracción del manifiesto del HTML, validación
+- `tests/htaW.Tests` (127 pruebas, pasan): instancia única, línea de comandos, barra de título del manifiesto y de cada página, extracción del manifiesto del HTML, validación
   del manifiesto e ids, permisos y forma canónica, reglas de `shell.exec` (resolución en `PATH` pasado como
   parámetro, nombres frente a rutas, intérpretes, `*.*`), archivos ejecutables para `shell.open`, Mark of the
   Web (flujo alternativo real en NTFS), reglas de `trust.json`, apertura de HTML/zip/carpeta, `pack`
@@ -64,10 +64,10 @@ explorador.
 Probado en Windows 11 (JIT y AOT) con htaW: `hola.htaw` con CSS nativo y el acento del sistema, `exec` de un
 programa permitido, permiso no declarado rechazado, diálogo modal con resultado; `notas.htaw` (zip) marcado
 como descargado: ventana de permisos (Cancelar por defecto), guardar con `fs`/`dialog`, ajustes persistentes y
-segunda apertura sin preguntar; panel sin argumentos (estado de la asociación, lista y olvido de permisos, ayuda, cancelar un diálogo); carpeta pasada como argumento (como al arrastrarla sobre htaw) y recientes en el panel (Abrir); ejecutable portable (AOT) con argumentos y su icono en la barra de título, la de tareas y el `.exe`; `--version` y `pack` con salida
+segunda apertura sin preguntar; panel sin argumentos (estado de la asociación, lista y olvido de permisos, ayuda, cancelar un diálogo); carpeta pasada como argumento (como al arrastrarla sobre htaw) y recientes en el panel (Abrir); ejecutable portable (AOT) con argumentos y su icono en la barra de título, la de tareas y el `.exe`; barra de título propia con `samples/htaw/barra` (ver BARRA-DE-TITULO.md); `--version` y `pack` con salida
 redirigida.
 
-Sin probar todavía: los puntos de DPI y tema en caliente (el enlace externo ya está probado: abre el navegador); en htaW, `--register`, `fs.watch`,
+Probado también: mover ventanas entre monitores con distinta escala (con la barra de título propia), `--register` y abrir una carpeta en modo desarrollo con su lista de recientes. Sin probar todavía: el tema en caliente (el enlace externo ya está probado: abre el navegador); en htaW, `fs.watch`,
 `spawn` y `http.fetch`.
 - Abrir, redimensionar y cerrar varias ventanas; modal sobre dueña.
 - Mover la ventana entre monitores con distinta escala.

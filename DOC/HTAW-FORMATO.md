@@ -116,7 +116,7 @@ Implementado en `src/htaW/Package/` (`HtawManifest.cs`, `HtawPackage.cs`). Detal
   que sale de la raíz o un `data:` mal formado es error; un icono que no se encuentra o no es `.png`/`.ico` válido es un
   aviso al abrir (queda el de htaW) y un error en `pack` y `bundle`. Para tamaños pequeños nítidos, mejor un `.ico`
   con varios tamaños; un `.png` se escala (conviene cuadrado y de 256 px o más).
-- `singleInstance` se lee pero todavía no tiene efecto.
+- `singleInstance`: instancia única por app y usuario (ver HTAW-INTEGRACION.md).
 - El prefijo de ruta `/_htaw/` está reservado para htaW (CSS y acceso binario a archivos): la app no debe usarlo.
 - Con `"theme": "native"` (por defecto), htaW inserta en cada respuesta HTML, justo tras `<head>`, su hoja
   `/_htaw/htaw.css` y un `<style id="htaw-theme">` con el tema real. Nunca antes del `<!doctype>`.

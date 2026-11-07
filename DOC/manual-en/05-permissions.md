@@ -10,7 +10,7 @@ download it.
 |---|---|---|
 | `fs` | `htaw.fs` (read, write, list, delete, watch files) | Read and write files |
 | `dialog` | `htaw.dialog` (open, save, folder, messages) | Show system dialogs |
-| `clipboard` | `htaw.clipboard` | Read and write the clipboard |
+| `clipboard` | `htaw.clipboard` | Read and write the clipboard (text and images) |
 | `http` | `htaw.http.fetch` (without CORS) | Connect to the Internet without restrictions |
 | `env` | `htaw.env` (environment variables and user folders) | Read environment variables and user folders |
 | `shell.open` | `htaw.shell.open` and `htaw.shell.reveal` | Open files and addresses with other applications |

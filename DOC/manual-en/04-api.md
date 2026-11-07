@@ -59,11 +59,13 @@ Application data. **No permission.**
 | `dev` | `boolean` | `true` in development mode. |
 | `quit(code?)` | `Promise<void>` | Closes the whole app with that exit code (0 by default). |
 | `relaunch()` | `Promise<void>` | Opens the app again with the same arguments (and mode) and closes this one. |
+| `on("secondInstance", fn)` | `() => void` | With `singleInstance`, the app was opened again (for example, with another file): `fn({ args, cwd })` receives the arguments of that opening and its current folder (to resolve relative paths). The main window has already come to the front. Returns the function to stop listening. |
 
 ```js
 document.title = `${htaw.app.name} ${htaw.app.version ?? ""}`;
 if (htaw.app.args.length) openFile(htaw.app.args[0]);   // e.g. a file dropped onto the app
 if (htaw.app.dev) console.log("Development mode");
+htaw.app.on("secondInstance", ({ args }) => { if (args.length) openFile(args[0]); });  // with singleInstance
 ```
 
 ---
@@ -79,11 +81,13 @@ The page's window. **No permission.** More detail and examples in [Windows and m
 | `setSize(width, height)` | Changes the size of the content area (logical units). |
 | `center()` | Centres the window on its screen. |
 | `minimize()`, `maximize()`, `restore()` | Minimizes, maximizes or restores. |
+| `onClosing(fn)` | Before the window closes because the user or the system asks, `fn()` is called; if it returns `false` (or a promise that ends in `false`), the window stays open. Useful to warn about unsaved changes. `htaw.window.close()` does not ask. Returns the function to remove it. |
 | `close(result?)` | Closes the window. In a modal window, `result` (any JSON value) reaches whoever opened it. Closing the last window closes the app. |
 | `open(page, options?)` | Opens another page of the app in a new window. Returns `{ id, result }`. |
+| `titlebar` | This window's custom title bar: `set`, `update`, `focus` and `on`. See [Title bar](10-title-bar.md). |
 
-`open` options: `title`, `width`, `height` (by default, those of the window that opens it), `resizable` (`true`) and
-`modal` (`false`). With `modal: true` the window opens above the current one, blocks it while open, and `result` is a
+`open` options: `title`, `width`, `height` (by default, those of the window that opens it), `resizable` (`true`),
+`modal` (`false`) and `titlebar` (a custom bar, or `false` for the normal bar even if the page declares one). With `modal: true` the window opens above the current one, blocks it while open, and `result` is a
 promise with whatever the other page passes to `htaw.window.close(value)` (`null` if it closed without a value).
 
 ```js
@@ -338,11 +342,22 @@ public APIs that allow it, the `http` permission is not needed.
 
 ## `htaw.clipboard`
 
-System clipboard (text). **Permission `clipboard`.**
+System clipboard: text and images. **Permission `clipboard`.**
+
+| Function | Description |
+|---|---|
+| `readText()` → `string \| null` | Clipboard text (`null` if there is no text). |
+| `writeText(text)` | Puts text (replaces what was there). |
+| `readImage()` → `Blob \| null` | Clipboard image, always as PNG (`image/png`); if it was copied in another format (for example, a screenshot), it is converted. `null` if there is no image. |
+| `writeImage(image)` | Puts an image. Accepts `Blob`/`File`, `ArrayBuffer`/`Uint8Array` (bytes of a PNG, JPEG…), `<img>`, `<canvas>`, `ImageBitmap` or a `data:` URL; anything that is not PNG is converted. Other applications get it with transparency (if they support it) or as a bitmap. |
 
 ```js
 await htaw.clipboard.writeText(result);
 const pasted = await htaw.clipboard.readText();   // null if there is no text
+
+const img = await htaw.clipboard.readImage();
+if (img) document.querySelector("img").src = URL.createObjectURL(img);
+await htaw.clipboard.writeImage(document.querySelector("canvas"));
 ```
 
 ---
@@ -412,6 +427,9 @@ document.getElementById("export").hidden = !htaw.has("fs");
   external URL (`http`, `https`, `mailto`) opens in the system browser. Other schemes are ignored.
   External URLs only open when the user asks with a click or a key press (unless the app has the `links.auto`
   permission, see [Permissions](05-permissions.md#the-apps-pages)).
+- **Browser keys disabled**: F5, Ctrl+R, Ctrl+P, Ctrl+F, Ctrl zoom and F12 do nothing (as in native applications,
+  and as on macOS and Linux, whose engines do not have them). The page does receive those keys in `keydown`, so it can
+  give them its own use (for example, Ctrl+F for its own search). They only work in development mode.
 - **Messages between windows**: `glue.emit` / `glue.on`, `BroadcastChannel` and the `storage` event; see
   [Windows and messaging](07-windows.md).
 - **The `glue` object**: the WolfGlue layer `htaw` is built on. Only `glue.emit`, `glue.on` and `glue.off` are meant
@@ -419,7 +437,4 @@ document.getElementById("export").hidden = !htaw.has("fs");
 
 ## Not available yet
 
-- `htaw.window.onClosing(fn)`: notify before the window closes so it can be cancelled (for example, with unsaved
-  changes).
-- Single instance (`singleInstance`) and the "second instance" event.
 - Frameless window (`window.frame: "none"`).

@@ -5,6 +5,7 @@
   <Folder Name="/src/">
     <Project Path="src/htaW/htaW.csproj" />
     <Project Path="src/WolfGlue/WolfGlue.csproj" />
+    <Project Path="src/WolfGlue.Generators/WolfGlue.Generators.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/htaW.Tests/htaW.Tests.csproj" />

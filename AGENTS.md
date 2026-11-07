@@ -30,6 +30,8 @@ Repositorio con dos piezas:
   El webview va en una hija oculta hasta la carga (WebView2 pinta su gris antes del primer fotograma).
 - SmartScreen del webview desactivado por defecto (`UrlReputationCheck`): retrasaba cada navegacion ~2 s.
 - Comunicacion web <-> C#: JSON-RPC sobre el canal de mensajes del webview + `fetch` al host propio para binarios.
+- Generador de Roslyn `src/WolfGlue.Generators` (enlazado por WolfGlue.targets): `[GlueService]` en una clase ->
+  `bridge.Register(servicio)` con parametros posicionales y `GlueServicesTypeScript` (.d.ts); en JS `glue.services.x.y()`.
 - WolfGlue se consume **solo como `ProjectReference`** (submodulo git en otros repos); no se publica en NuGet.
   El consumidor importa `WolfGlue.targets` con una linea.
 - htaW: dos formatos con la misma extension `.htaw` (HTML con manifiesto JSON en `<head>`, o zip con `htaw.json`).
@@ -45,6 +47,13 @@ Repositorio con dos piezas:
 - Enlaces y `window.open` a otras webs (http, https, mailto): navegador del sistema sin permiso, solo si los inicia el
   usuario (`IsUserInitiated`); el permiso `links.auto` quita esa condicion (`ExternalLinksRequireUserAction`). El host no
   usa `ExecuteScript` en las paginas (daria activacion de usuario falsa): el fundido se arranca con un mensaje.
+- Barra de titulo con elementos propios (DOC/BARRA-DE-TITULO.md): modelo comun limitado a lo que permite la barra de
+  herramientas nativa de macOS (sin estilos propios): modos `title`/`compact`/`labels`; botones (conmutador, menu,
+  partido), grupos, panel, busqueda nativa, imagen, espacio, un centrado; iconos con nombre comun, PNG/ICO tenidos o
+  fuente propia. Por ventana: `GlueWindowOptions.TitleBar`, bloque `htaw+json` de la pagina (`PageTitleBar`),
+  `window.open({ titlebar })` o en caliente (`glue.window.titlebar`). Windows: marco del sistema + franja pintada.
+- Teclas de navegador del webview (F5, Ctrl+P, Ctrl+F, zoom, F12) desactivadas (`GlueAppOptions.BrowserKeys`, htaW solo
+  en modo desarrollo): macOS y Linux no las tienen. Portapapeles con imagenes (siempre PNG hacia la web).
 - Icono de app: `icon` del manifiesto (.png/.ico, ruta o `data:`) en barra de titulo y de tareas (`GlueAppOptions.Icon`).
   Icono por archivo en el explorador: descartado por ahora. Cada app fija su AppUserModelID (`htaW.<id>`) para tener su
   propio boton en la barra de tareas.
@@ -58,24 +67,28 @@ Repositorio con dos piezas:
 
 ## Estado
 - Fase 1 (WolfGlue en Windows) completa: `src/WolfGlue` (API, bridge, contenido, servicios nativos `app.Native`,
-  backend Win32 + WebView2), `samples/Hola` (ejemplo) y `tests/WolfGlue.Tests` (xUnit, 86 pruebas, pasan).
+  backend Win32 + WebView2), `samples/Hola` (ejemplo) y `tests/WolfGlue.Tests` (xUnit, 130 pruebas, pasan).
 - Probado a mano en Windows 11, con JIT y con AOT (un `.exe` de ~3,9 MB): llamadas sincronas/asincronas, errores con
   codigo, eventos desde otro hilo, varias ventanas, avisos entre ventanas, dialogo modal con resultado, cierre limpio,
   dialogos de abrir (multiple), guardar y carpeta, mensaje con botones, portapapeles, pantallas, tema y mostrar en
   el explorador.
-- Sin probar: cambio de DPI entre monitores, cambio de tema en caliente (evento `glue.theme`).
+- Probado a mano: cambio de DPI entre monitores (tambien con la barra de titulo propia). Sin probar: cambio de tema en
+  caliente (evento `glue.theme`).
 - Probado a mano (htaW, JIT y AOT): enlaces y `window.open` externos se abren con un clic real y se ignoran si los lanza
   la página sola (temporizador, `click()` simulado); con `links.auto`, se abren igualmente.
 - Limitacion conocida: el mensaje nativo (`MessageBoxW`) sale en modo claro aunque el sistema este en oscuro.
 - Fase 2 (htaW en Windows) casi completa: `src/htaW` (paquete y manifiesto, permisos y confianza, API `htaw.*`,
-  CSS nativo, linea de comandos), `samples/htaw` (`hola.htaw`, `markdown.htaw` y la carpeta `notas`) y `tests/htaW.Tests`
-  (117 pruebas, pasan). AOT: un `htaw.exe` de ~8,4 MB, sin avisos.
+  CSS nativo, linea de comandos), `samples/htaw` (`hola.htaw`, `markdown.htaw` y las carpetas `notas` y `barra`) y `tests/htaW.Tests`
+  (127 pruebas, pasan). AOT: un `htaw.exe` de ~9,3 MB, sin avisos.
 - Probado a mano (JIT y AOT): HTML suelto con CSS nativo y acento del sistema, `exec` permitido, permiso denegado,
   dialogo modal con resultado, zip con confirmacion por Mark of the Web, guardar con `fs` y `dialog`, ajustes
   persistentes, segunda apertura sin preguntar, panel sin argumentos (estado de la asociacion, olvidar permisos, ayuda), `--version` y `pack` con salida redirigida.
+- Probado a mano (htaW, JIT y AOT): barra de titulo propia en sus tres modos, varias ventanas cada una con su barra o sin
+  ella, busqueda, menus, conmutador y cambio en caliente (`samples/htaw/barra`).
 - Probado a mano (AOT): ejecutable portable con argumentos e icono propio (barra de titulo, barra de tareas y el del .exe).
-- Falta de la fase 2: instancia unica, `onClosing`, ventana de recientes. Sin probar: `--register`,
-  `fs.watch`, `spawn`, `http.fetch`; en el panel, empaquetar, abrir y modo desarrollo (los dialogos).
+- Hecho y probado a mano: instancia unica (`singleInstance`, mutex + tuberia con nombre, evento `secondInstance`) y
+  `htaw.window.onClosing` (confirmacion de cierre por la pagina). Falta de la fase 2: ventana de recientes. Probado a mano: `--register`, abrir una carpeta en modo
+  desarrollo y su lista de recientes. Sin probar: `fs.watch`, `spawn`, `http.fetch`; en el panel, empaquetar y abrir.
 - Evaluado, sin implementar (DOC/HTAW-INTEGRACION.md): icono de cada .htaw en el explorador (descartado por ahora) y
   portables en Linux (.desktop por usuario) y macOS (bundle .app con .icns).
 - macOS y Linux: sin empezar (sin `build.sh` hasta entonces).

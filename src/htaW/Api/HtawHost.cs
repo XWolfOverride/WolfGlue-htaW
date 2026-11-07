@@ -25,6 +25,7 @@ internal sealed class HtawHost
     private int _nextWatch;
     private FileSystemWatcher? _devWatcher;
     private Timer? _devReload;
+    private SingleInstance? _single;
 
     private static readonly HttpClient Http = new() { Timeout = Timeout.InfiniteTimeSpan };
 
@@ -45,6 +46,7 @@ internal sealed class HtawHost
             AppId = "htaW",
             Host = pkg.Host,
             DevTools = dev,
+            BrowserKeys = dev, // F5 para recargar, F12, buscar... solo en modo desarrollo
             NativeServicesInWeb = false, // htaW expone sus versiones con permisos
             DataFolder = Path.Combine(HtawPaths.Root, "WebView2"),
             // Mismo fondo que --htaw-bg de htaw.css, para que la ventana aparezca ya con el color de la pagina.
@@ -53,20 +55,56 @@ internal sealed class HtawHost
             Icon = pkg.Icon,
             // Enlaces y window.open a otras webs: solo con un clic o una tecla del usuario, salvo el permiso links.auto.
             ExternalLinksRequireUserAction = !_perms.Has("links.auto"),
+            // Cada ventana toma la barra de titulo del bloque htaw+json de su pagina (window.titlebar), si lo tiene.
+            PageTitleBar = PageTitleBar,
         });
         _app.Bridge.UseJson(ApiJson.Default);
         _app.Content = new HtawContent(pkg, _perms, () => HtmlInjector.ThemeStyle(_app.Native.Theme.Current));
         RegisterApi();
     }
 
+    /// <summary>
+    /// Barra de titulo declarada por una pagina: <c>window.titlebar</c> del bloque <c>application/htaw+json</c> de su
+    /// <c>&lt;head&gt;</c>. Solo se lee esa clave; el resto del bloque solo cuenta en la pagina de entrada (el manifiesto).
+    /// </summary>
+    internal static GlueTitleBar? PageTitleBar(string html)
+    {
+        if (ManifestReader.ExtractFromHtml(html) is not { } json) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty("window", out var w) || w.ValueKind != JsonValueKind.Object
+                || !w.TryGetProperty("titlebar", out var tb) || tb.ValueKind != JsonValueKind.Object) return null;
+            return GlueTitleBar.Parse(tb.GetRawText());
+        }
+        catch (Exception e) when (e is JsonException or FormatException) { return null; }
+    }
+
     public int Run()
     {
+        if (_pkg.Manifest.SingleInstance)
+        {
+            // Ya hay una instancia de esta app: recibe estos argumentos y este proceso termina.
+            _single = SingleInstance.Acquire(_pkg.Id, _args);
+            if (_single is null) return 0;
+            _single.Listen(info => _app.Invoke(() => OnSecondInstance(info)));
+        }
         _app.InvokeAsync(StartAsync);
         int code = _app.Run();
         _procs.KillAll();
         foreach (var w in _watchers.Values) w.Dispose();
         _devWatcher?.Dispose();
+        _single?.Dispose();
         return code;
+    }
+
+    /// <summary>Otra apertura de la app: la ventana principal se pone delante y las paginas reciben el evento.</summary>
+    private void OnSecondInstance(SecondInstanceInfo info)
+    {
+        if (_app.Windows.Count == 0) return;
+        _app.Windows[0].Focus();
+        _app.Emit("htaw.secondInstance", info);
     }
 
     private async Task StartAsync()
@@ -94,6 +132,7 @@ internal sealed class HtawHost
             StartPage = _pkg.Entry,
             Background = w.Background is null ? null : GlueBackground.Parse(w.Background),
             FadeInMs = w.FadeIn,
+            TitleBar = w.ParsedTitleBar,
         });
         win.Show();
         if (_dev) StartDevWatcher();
@@ -188,6 +227,7 @@ internal sealed class HtawHost
             if (_dev) psi.ArgumentList.Add("--dev");
             if (!_pkg.Embedded) psi.ArgumentList.Add(_pkg.SourcePath); // el portable ya lleva la app dentro
             foreach (var a in _args) psi.ArgumentList.Add(a);
+            _single?.Dispose(); // la nueva instancia sera la principal
             Process.Start(psi);
             _app.Quit(0);
         });
@@ -201,6 +241,9 @@ internal sealed class HtawHost
         // ------------------------------------------------------------- portapapeles
         b.Register<JsonElement, string?>("htaw.clipboard.readText", (_, _) => Need("clipboard", () => n.Clipboard.GetTextAsync()));
         b.Register<string>("htaw.clipboard.writeText", (t, _) => Need("clipboard", () => n.Clipboard.SetTextAsync(t ?? "")));
+        b.Register<JsonElement, string?>("htaw.clipboard.readImage", (_, _) => Need("clipboard", async () =>
+            await n.Clipboard.GetImageAsync() is { } png ? Convert.ToBase64String(png) : null));
+        b.Register<string>("htaw.clipboard.writeImage", (b64, _) => Need("clipboard", () => n.Clipboard.SetImageAsync(Convert.FromBase64String(b64 ?? ""))));
 
         // ------------------------------------------------------------- shell
         b.Register<string>("htaw.shell.open", (target, _) => { _perms.Require("shell.open"); ShellOpen(target); });

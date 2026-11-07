@@ -35,6 +35,10 @@ internal interface IPlatformServices
     Native.MessageResult Message(IPlatformWindow? owner, string title, Native.MessageOptions options);
     string? GetClipboardText();
     void SetClipboardText(string text);
+    /// <summary>Imagen del portapapeles como PNG, o null si no hay.</summary>
+    byte[]? GetClipboardImage();
+    /// <summary>Pone una imagen PNG en el portapapeles (sustituye lo que hubiera).</summary>
+    void SetClipboardImage(byte[] png);
     IReadOnlyList<Native.ScreenInfo> GetScreens();
     Native.ThemeInfo GetTheme();
     /// <summary>Abre un archivo o carpeta con la aplicacion por defecto.</summary>
@@ -61,6 +65,10 @@ internal interface IPlatformWindow
     void OpenDevTools();
     /// <summary>Recarga la pagina actual.</summary>
     void Reload();
+    /// <summary>Pone, cambia o quita (null) la barra de titulo propia. Tambien tras cambiar un elemento.</summary>
+    void SetTitleBar(GlueTitleBar? bar);
+    /// <summary>Da el foco a un elemento de la barra (el campo de busqueda).</summary>
+    void FocusTitleBarItem(string id);
 }
 
 /// <summary>Lo que la ventana nativa notifica a <see cref="GlueWindow"/>. Todo en el hilo de UI.</summary>
@@ -87,4 +95,8 @@ internal interface IWindowHost
     void OnNewWindowRequested(string url, int? width, int? height, bool userInitiated);
     /// <summary>Devuelve false para cancelar la navegacion. <paramref name="userInitiated"/>: la inicio el usuario (clic, tecla).</summary>
     bool OnNavigationStarting(string url, bool userInitiated);
+    /// <summary>Evento de la barra de titulo propia (clic, cambio o Intro en la busqueda).</summary>
+    void OnTitleBarEvent(GlueTitleBarEvent e);
+    /// <summary>Bytes de un archivo de la barra (icono o fuente; ruta del origen propio o URL data:); null si no se encuentra.</summary>
+    Task<byte[]?> LoadTitleBarFileAsync(string src);
 }

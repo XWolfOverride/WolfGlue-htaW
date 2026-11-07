@@ -24,6 +24,8 @@ In development mode:
   because editors save in several steps). `.git` folders are ignored.
 - **F12** opens DevTools (console, inspector, network, debugger with breakpoints) and the engine's context menu is
   enabled.
+- **Browser keys** work: F5 or Ctrl+R reload, Ctrl+F finds in the page, Ctrl+P prints, Ctrl+/− change the zoom.
+  Outside development mode they are disabled (see [The API](04-api.md#other-page-capabilities)).
 - Manifest **warnings** appear in the console with the `[htaW]` prefix.
 - **It does not ask about permissions, but they are enforced**: a call without permission fails just as in the final
   version.
