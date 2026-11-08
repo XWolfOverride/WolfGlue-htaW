@@ -14,9 +14,10 @@ internal static class Shim
     });
 
     /// <summary>Shim con los datos de la ventana delante.</summary>
-    internal static string For(string windowId, string platform) =>
+    internal static string For(string windowId, string platform, string backdrop = "solid") =>
         "window.__glueInit={id:" + JsonSerializer.Serialize(windowId, Bridge.BridgeJsonContext.Default.String) +
-        ",platform:" + JsonSerializer.Serialize(platform, Bridge.BridgeJsonContext.Default.String) + "};\n" + Source.Value;
+        ",platform:" + JsonSerializer.Serialize(platform, Bridge.BridgeJsonContext.Default.String) +
+        ",backdrop:" + JsonSerializer.Serialize(backdrop, Bridge.BridgeJsonContext.Default.String) + "};\n" + Source.Value;
 
     /// <summary>
     /// Fundido de entrada del documento: el <c>body</c> empieza transparente (se ve el fondo de la pagina, que deberia

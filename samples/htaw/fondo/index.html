@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Fondo del sistema</title>
+<!-- Barra propia para ver el corte entre la franja y el material. -->
+<script type="application/htaw+json">
+{
+  "window": {
+    "titlebar": {
+      "mode": "compact",
+      "items": [
+        { "type": "button", "id": "solid", "icon": "open", "text": "Solid" },
+        { "type": "button", "id": "tinted", "icon": "save", "text": "Tinted" },
+        { "type": "button", "id": "blurred", "icon": "copy", "text": "Blurred" }
+      ]
+    }
+  }
+}
+</script>
+</head>
+<body>
+<main class="layout-fill column" style="padding:16px;gap:12px">
+  <h1>Fondo del sistema (backdrop)</h1>
+  <div class="row">
+    <button id="solid">solid</button>
+    <button id="tinted" class="primary">tinted (Mica)</button>
+    <button id="blurred">blurred (Acrylic)</button>
+    <button id="panel">Abrir panel difuminado</button>
+    <button id="bar">Barra: compact</button>
+  </div>
+  <div class="card"><p>Una tarjeta: con el efecto activo es semitransparente y deja ver el material.</p>
+    <input type="text" value="Un campo de texto"> <button>Un boton</button></div>
+  <p class="muted" id="state"></p>
+</main>
+<script>
+const show = () => (document.getElementById("state").textContent =
+  "Efecto activo: " + htaw.theme.backdrop + "  (clase en <html>: " + (document.documentElement.className || "ninguna") + ")");
+for (const v of ["solid", "tinted", "blurred"]) document.getElementById(v).onclick = () => htaw.window.setBackdrop(v);
+document.getElementById("panel").onclick = () => htaw.window.open("panel.html", { width: 320, height: 200, backdrop: "blurred" });
+const items = [
+  { type: "button", id: "solid", icon: "open", text: "Solid" },
+  { type: "button", id: "tinted", icon: "save", text: "Tinted" },
+  { type: "button", id: "blurred", icon: "copy", text: "Blurred" },
+];
+// Cicla el tipo de barra propia: compact -> labels -> title -> ninguna (barra del sistema)
+const modes = ["compact", "labels", "title", null];
+let mi = 0;
+document.getElementById("bar").onclick = async (e) => {
+  mi = (mi + 1) % modes.length;
+  const m = modes[mi];
+  await htaw.window.titlebar.set(m ? { mode: m, items } : null);
+  e.target.textContent = "Barra: " + (m ?? "del sistema");
+};
+htaw.window.titlebar.on("click", (id) => htaw.window.setBackdrop(id));
+htaw.theme.on("change", show);
+show();
+</script>
+</body>
+</html>

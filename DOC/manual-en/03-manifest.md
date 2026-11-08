@@ -42,6 +42,9 @@ An HTML file without a manifest also opens, with default values (and a warning i
 | `id` | text | derived from the path | Unique identifier. Lowercase letters, digits, `.` and `-` (`com.example.app`). Isolates the app's data: settings, `localStorage`, IndexedDB, cookies, remembered permissions. **Recommended**: without it, one is computed from the file path (`local-…`) and changes if the file moves. |
 | `name` | text | file name | Visible name and title of the main window. Without it, the title is the page's `<title>`. |
 | `version` | text | — | App version. Shown in the permission window and in `htaw.app.version`. |
+| `author` | text | — | The app's author. Shown in the About window and in `htaw.app.author`. |
+| `about` | — | generic window | Own About page (`"about.html"`) or `{ "page": "about.html", "width": 420, "height": 320 }`. Without it, htaW shows a generic window with name, version, author, icon and, at the bottom in small grey text, "Powered by htaW" (yours has no such footer). See [Windows](07-windows.md#about). |
+| `lifecycle` | `"main"` | `"last"` | `"main"` | Lifecycle: `"main"` = closing the main window (the first one opened) closes the app and all other windows; `"last"` = the app lives while any window remains. See [Windows](07-windows.md#lifecycle). |
 | `entry` | path | — | Start page, relative to the root. **Required** in a folder or zip; ignored in a standalone HTML (the page is the file itself). |
 | `icon` | path or `data:` | htaW icon | `.png` or `.ico` icon (up to 1 MB). See "The icon" below. |
 | `lang` | text | — | App language (informative). |
@@ -49,6 +52,7 @@ An HTML file without a manifest also opens, with default values (and a warning i
 | `theme` | `"native"` \| `"none"` | `"native"` | `native`: htaW injects its CSS with a system look. `none`: the page looks like a normal website. See [Native look](06-style.md). |
 | `permissions` | list | `[]` | What the app is allowed to do. See [Permissions](05-permissions.md). |
 | `singleInstance` | yes/no | `false` | Single instance: if the app is already open (for this user), opening it again does not create another copy; the running one comes to the front and receives the arguments through `htaw.app.on("secondInstance")`. |
+| `tray.keepRunning` | yes/no | `false` | With the `tray` permission, closing the main window hides it (the app stays in the tray) while an icon is set. See [`htaw.tray`](04-api.md#htawtray--permission-tray). |
 
 ### `window`
 
@@ -65,6 +69,8 @@ refer to the **content area**, without the frame or the title bar.
 | `alwaysOnTop` | `false` | Always above the other windows. |
 | `background` | `htaw.css` background | Colour the window shows while the page loads: `#rgb`, `#rrggbb` or `light-dark(#light, #dark)`. See "How the window appears". |
 | `fadeIn` | 150 | Duration in ms of the content fade when it appears (0 = no fade; maximum 2000). |
+| `menu` | — | Window menu (File, Edit…) of the main window: a list of menus `{ "text": "&File", "items": [...] }`. Other pages can declare their own in their `<script type="application/htaw+json">` block. See [Window menus](10-title-bar.md#window-menu). |
+| `backdrop` | `"solid"` | System backdrop behind the window: `"solid"` (normal), `"tinted"` (tinted by the desktop wallpaper; Mica on Windows 11) or `"blurred"` (what is behind, blurred; Acrylic). If the system cannot (Windows 10, transparency effects off), the window stays solid. Other pages can declare their own in their `<script type="application/htaw+json">` block (`{ "window": { "backdrop": "blurred" } }`). See [`htaw.theme.backdrop`](04-api.md#htawtheme) and [Style](06-style.md). |
 | `center` | `true` | The window opens centred. |
 | `titlebar` | — | Custom buttons and other controls in the main window's title bar. See [Title bar](10-title-bar.md). Other pages can declare their own in their `<script type="application/htaw+json">` block. |
 | `frame` | `"native"` | Reserved: `"none"` is not supported yet (the system frame is used, with a warning). |

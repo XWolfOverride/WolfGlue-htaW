@@ -14,6 +14,8 @@ en `permissions`**. Pide solo lo que de verdad uses: es lo que verá el usuario 
 | `env` | `htaw.env` (variables de entorno y carpetas del usuario) | Leer variables de entorno y carpetas del usuario |
 | `shell.open` | `htaw.shell.open` y `htaw.shell.reveal` | Abrir archivos y direcciones con otras aplicaciones |
 | `links.auto` | Que los enlaces y `window.open` a otras webs se abran sin que el usuario haga clic (por ejemplo, desde un temporizador) | Abrir paginas web en el navegador sin que lo pidas |
+| `notifications` | `htaw.notify` (notificaciones del sistema) | Mostrar notificaciones del sistema |
+| `tray` | `htaw.tray` (icono junto al reloj y seguir abierta con la ventana cerrada) | Mostrar un icono junto al reloj y seguir abierta en segundo plano |
 | `shell.exec` | `htaw.shell.exec` y `htaw.shell.spawn`, con lista de programas | Ejecutar estos programas: … |
 
 Sin permiso, siempre disponibles: `htaw.app`, `htaw.window`, `htaw.settings`, `htaw.theme`, `htaw.permissions`, el

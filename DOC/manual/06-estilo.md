@@ -94,6 +94,26 @@ usuario los cambia con la app abierta.
 Si cambias el fondo, pon el mismo color en `window.background` del manifiesto (o en un
 `<meta name="theme-color">`) para que la ventana aparezca ya con él (ver [El manifiesto](03-manifiesto.md)).
 
+## Fondo del sistema (`window.backdrop`)
+
+Con `window.backdrop` en `"tinted"` (Mica) o `"blurred"` (Acrylic) el material del sistema se ve **detrás** de la página,
+así que la página no debe pintar un fondo opaco. Con `theme: "native"` ya está resuelto: mientras el efecto está activo,
+WolfGlue pone en `<html>` la clase `glue-backdrop-tinted` o `glue-backdrop-blurred` y `htaw.css`
+
+- hace transparente `--htaw-bg` (el fondo de `html` y `body`), y
+- pasa a semitransparentes `--htaw-surface`, `--htaw-control-bg`, `--htaw-control-hover`, `--htaw-control-active` y
+  `--htaw-border`, de modo que tarjetas, paneles y controles dejan ver el material como las apps del sistema.
+
+Cuando el efecto se desactiva (el usuario quita los efectos de transparencia, el sistema no lo admite) la clase
+desaparece y todo vuelve a los colores sólidos de siempre, sin escribir CSS propio. Con `theme: "none"` o para tu propio CSS:
+
+```css
+html.glue-backdrop-tinted .mi-panel { background: rgb(255 255 255 / .5); }
+```
+
+`htaw.theme.backdrop` da el efecto activo desde JavaScript. La barra de título propia (`window.titlebar`) sigue con su
+color sólido: entre ella y el material puede notarse un corte.
+
 ## Según el sistema
 
 `<html>` lleva `data-os="windows"`, `"macos"` o `"linux"`, por si necesitas ajustar algo:

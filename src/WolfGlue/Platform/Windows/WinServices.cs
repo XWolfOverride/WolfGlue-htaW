@@ -400,6 +400,25 @@ internal sealed unsafe class WinServices(WinPlatform platform) : IPlatformServic
     // ------------------------------------------------------------- shell
     public void Open(string path) => Win32.ShellExecuteW(0, null, path, null, null, Win32.SW_SHOWNORMAL);
 
+    private WinToast? _toast;
+    private WinToast Toast => _toast ??= new WinToast(platform.App);
+
+    private WinTray? _tray;
+    internal WinTray Tray => _tray ??= new WinTray(platform);
+
+    public string? ShowMenu(IPlatformWindow? owner, IReadOnlyList<GlueMenuItem> items, (double X, double Y)? position) =>
+        WinMenu.Popup(owner as WinWindow, platform.MessageWindow, items, position);
+
+    internal void Refresh() => _tray?.Refresh();
+
+    public bool TrayAvailable => true;
+    public void SetTray(GlueTray? tray) { if (tray is null && _tray is null) return; Tray.Set(tray); }
+
+    public void ShowNotification(string id, GlueNotification n) => Toast.Show(id, n);
+    public void CloseNotification(string id) => _toast?.Close(id);
+    public void CloseAllNotifications() => _toast?.CloseAll();
+    public NotificationPermission GetNotificationPermission() => Toast.Permission();
+
     public void Reveal(string path)
     {
         var pidl = Win32.ILCreateFromPathW(path);

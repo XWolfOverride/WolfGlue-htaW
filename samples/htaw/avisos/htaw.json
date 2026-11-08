@@ -1,0 +1,8 @@
+{
+  "id": "wolfglue.ejemplo.avisos",
+  "name": "Avisos",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": { "width": 560, "height": 420, "minWidth": 420, "minHeight": 300 },
+  "permissions": ["notifications"]
+}

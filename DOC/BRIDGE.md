@@ -58,6 +58,17 @@ await glue.clipboard.readText()                    // → string | null
 await glue.clipboard.writeText("…")
 await glue.clipboard.readImage()                   // → Blob image/png | null (viaja como PNG en base64)
 await glue.clipboard.writeImage(blobCanvasImgOBytes) // se convierte a PNG en la pagina (OffscreenCanvas)
+await glue.notifications.show({ id?, title, body?, silent?, buttons?: [{ id, text }] })  // → id (max. 2 botones); mismo id = sustituye
+await glue.notifications.close(id); await glue.notifications.permission()  // "granted" | "denied"
+await glue.menu.popup([{ id, text, enabled?, checked?, shortcut?, items?: [...] } | { type: "separator" }], { x?, y? })  // → id | null (menu contextual)
+await glue.tray.set({ icon?, color?, tooltip?, menu: [{ id, text, enabled?, checked?, default? } | { type: "separator" }] })  // menu obligatorio
+await glue.tray.update(id, { text?, enabled?, checked? }); await glue.tray.remove(); await glue.tray.available()
+glue.tray.on("click", id => …)   // opcion elegida (o la default con el clic izquierdo)
+await glue.window.show(); await glue.window.hide()
+await glue.aboutBox()  // ventana Acerca de (propia o generica)
+await glue.window.menu.set([{ text, items: [...] }] | null); glue.window.menu.on(id => …)  // menu de ventana (render propio en la barra de titulo)
+await glue.window.setBackdrop("solid" | "tinted" | "blurred")  // fondo del sistema; glue.window.backdrop = el activo; clase glue-backdrop-* en <html> y evento glue.backdrop {requested, active}
+glue.notifications.on(({ type: "click" | "button", id, button }) => …)
 await glue.screens()                               // → [{ bounds:{x,y,width,height}, workArea, scale, primary }]
 await glue.theme()                                 // → { dark, accent:"#RRGGBB", fontFamily, fontSize, highContrast }
 glue.on("glue.theme", t => …)                      // cuando cambia el tema del sistema

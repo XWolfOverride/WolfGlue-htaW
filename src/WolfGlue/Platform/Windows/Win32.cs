@@ -168,6 +168,10 @@ internal static unsafe partial class Win32
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsWindowVisible(nint hwnd);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool IsZoomed(nint hwnd);
 
     [LibraryImport("user32.dll")]
@@ -193,6 +197,11 @@ internal static unsafe partial class Win32
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(nint hwnd, int attr, int* value, int size);
 
+    [LibraryImport("dwmapi.dll")]
+    public static partial int DwmExtendFrameIntoClientArea(nint hwnd, int* margins);
+
+    public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+
     [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
     public static partial nint ShellExecuteW(nint hwnd, string? op, string file, string? parameters, string? dir, int show);
 
@@ -201,6 +210,42 @@ internal static unsafe partial class Win32
 
     [LibraryImport("gdi32.dll")]
     public static partial nint CreateSolidBrush(uint colorRef);
+
+    [LibraryImport("gdi32.dll")]
+    public static partial nint GetStockObject(int index);
+
+    public const int WH_MSGFILTER = -1, MSGF_MENU = 2;
+    public const uint WM_MENUSELECT = 0x011F, WM_SYSKEYDOWN = 0x0104, WM_SYSKEYUP = 0x0105, WM_KEYUP = 0x0101;
+
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowsHookExW")]
+    public static partial nint SetWindowsHookEx(int idHook, delegate* unmanaged<int, nint, nint, nint> proc, nint module, uint threadId);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnhookWindowsHookEx(nint hook);
+
+    [LibraryImport("user32.dll")]
+    public static partial short GetKeyState(int key);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint CallNextHookEx(nint hook, int code, nint wParam, nint lParam);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EndMenu();
+
+    public const int GWL_STYLE = -16;
+    public const uint RDW_INVALIDATE = 0x1, RDW_ERASE = 0x4, RDW_ALLCHILDREN = 0x80, RDW_UPDATENOW = 0x100;
+
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    public static partial nint GetWindowLongPtr(nint hwnd, int index);
+
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    public static partial nint SetWindowLongPtr(nint hwnd, int index, nint value);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool RedrawWindow(nint hwnd, nint rect, nint region, uint flags);
 
     [LibraryImport("gdi32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

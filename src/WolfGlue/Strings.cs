@@ -25,6 +25,10 @@ internal static partial class Strings
 
     private static string T(string es, string en) => Spanish ? es : en;
 
+    internal static string AboutTitle(string name) => T($"Acerca de {name}", $"About {name}");
+    internal static string AboutShort => T("Acerca de", "About");
+    internal static string AboutVersion => T("Version", "Version");
+    internal static string PoweredBy(string by) => T($"Desarrollado con {by}", $"Powered by {by}");
     internal static string UnsupportedOs => T("Sistema operativo no soportado.", "Unsupported operating system.");
     internal static string WrongThread => T(
         "Esta operacion debe hacerse en el hilo de UI (usa GlueApp.Invoke).",

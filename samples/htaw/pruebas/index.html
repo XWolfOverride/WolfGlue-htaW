@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Pruebas fs.watch, spawn y http.fetch</title>
+<style>
+  section { margin-bottom: 16px; }
+  .log { height: 150px; margin: 8px 0 0; }
+  .ok { color: var(--htaw-accent); } .fallo { color: #c42b1c; }
+  input[type=text] { min-width: 320px; }
+</style>
+</head>
+<body>
+<div class="layout-fill">
+<main class="column" style="gap:4px">
+  <h1>Pruebas de fs.watch, shell.spawn y http.fetch</h1>
+  <p class="muted">Cada bloque registra lo que ocurre y marca el resultado. Permisos de esta app: fs, env, http y shell.exec (solo ping y hostname).</p>
+
+  <section class="card">
+    <h2>fs.watch <span id="w-estado" class="muted"></span></h2>
+    <p class="muted">Vigila una carpeta temporal propia. Crea, modifica, renombra y borra un archivo y comprueba que llegan los cuatro eventos (create, change, rename, delete). Prueba tambien a tocar la carpeta desde el Explorador.</p>
+    <div class="row">
+      <button id="w-start" class="primary">Empezar a vigilar</button>
+      <button id="w-crear">Crear</button>
+      <button id="w-mod">Modificar</button>
+      <button id="w-ren">Renombrar</button>
+      <button id="w-del">Borrar</button>
+      <button id="w-stop">Parar</button>
+      <button id="w-abrir">Mostrar ruta</button>
+    </div>
+    <pre id="w-log" class="log"></pre>
+  </section>
+
+  <section class="card">
+    <h2>shell.spawn <span id="p-estado" class="muted"></span></h2>
+    <p class="muted">Lanza <code>ping</code> y muestra su salida en directo (stdout) y el codigo de salida. Prueba tambien a matarlo a mitad y a lanzar un programa que no esta permitido.</p>
+    <div class="row">
+      <button id="p-ping" class="primary">ping 127.0.0.1 (4 veces)</button>
+      <button id="p-largo">ping largo (20 veces)</button>
+      <button id="p-kill">Matar</button>
+      <button id="p-host">hostname (exec)</button>
+      <button id="p-prohibido">Programa no permitido</button>
+    </div>
+    <pre id="p-log" class="log"></pre>
+  </section>
+
+  <section class="card">
+    <h2>http.fetch <span id="h-estado" class="muted"></span></h2>
+    <p class="muted">Peticion HTTP sin las restricciones de CORS. Cambia la URL, el metodo o el tiempo maximo; prueba tambien una direccion inexistente.</p>
+    <div class="row" style="flex-wrap:wrap">
+      <select id="h-metodo"><option>GET</option><option>POST</option></select>
+      <input type="text" id="h-url" value="https://example.com/">
+      <input type="text" id="h-timeout" value="8000" style="min-width:70px;width:70px" title="timeout (ms)">
+      <button id="h-go" class="primary">Enviar</button>
+      <button id="h-json">GET JSON de ejemplo</button>
+      <button id="h-post">POST JSON de ejemplo</button>
+      <button id="h-mal">Direccion inexistente</button>
+    </div>
+    <pre id="h-log" class="log"></pre>
+  </section>
+</main>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const log = (id, t, cls) => {
+  const s = document.createElement("span");
+  if (cls) s.className = cls;
+  s.textContent = new Date().toLocaleTimeString() + "  " + t + "\n";
+  $(id).prepend(s);
+};
+const estado = (id, t, ok) => { const e = $(id); e.textContent = t; e.className = ok === undefined ? "muted" : ok ? "ok" : "fallo"; };
+
+// ------------------------------------------------------------------ fs.watch
+let carpeta = null, vigilancia = null, archivo = null;
+const vistos = new Set();
+const sep = () => (htaw.env.os === "windows" ? "\\" : "/");
+async function preparar() {
+  if (carpeta) return;
+  carpeta = htaw.env.temp.replace(/[\\/]$/, "") + sep() + "htaw-prueba-watch";
+  await htaw.fs.mkdir(carpeta);
+  archivo = carpeta + sep() + "prueba.txt";
+}
+const ev = (e) => {
+  vistos.add(e.type);
+  log("w-log", `${e.type}  ${e.path}${e.oldPath ? "  (antes: " + e.oldPath + ")" : ""}`);
+  estado("w-estado", "eventos vistos: " + [...vistos].join(", "), ["create", "change", "rename", "delete"].every((t) => vistos.has(t)));
+};
+const seguro = (f) => async () => { try { await f(); } catch (e) { log("w-log", "error: " + e.message, "fallo"); } };
+$("w-start").onclick = seguro(async () => {
+  await preparar();
+  if (vigilancia) return log("w-log", "ya se esta vigilando");
+  vigilancia = await htaw.fs.watch(carpeta, ev, { recursive: true });
+  log("w-log", "vigilando " + carpeta, "ok");
+});
+$("w-crear").onclick = seguro(async () => { await preparar(); await htaw.fs.writeText(archivo, "uno\n"); });
+$("w-mod").onclick = seguro(async () => { await preparar(); await htaw.fs.writeText(archivo, "dos\n", { append: true }); });
+$("w-ren").onclick = seguro(async () => {
+  await preparar();
+  const nuevo = carpeta + sep() + "renombrado.txt";
+  await htaw.fs.rename(archivo, nuevo, { overwrite: true });
+  archivo = nuevo;
+});
+$("w-del").onclick = seguro(async () => { await preparar(); await htaw.fs.remove(archivo); archivo = carpeta + sep() + "prueba.txt"; });
+$("w-stop").onclick = seguro(async () => { if (vigilancia) { await vigilancia.close(); vigilancia = null; log("w-log", "vigilancia cerrada", "ok"); } });
+$("w-abrir").onclick = seguro(async () => { await preparar(); log("w-log", "carpeta: " + carpeta); });
+
+// ------------------------------------------------------------------ shell.spawn
+let proc = null;
+async function lanzar(veces) {
+  if (proc) return log("p-log", "ya hay un proceso en marcha");
+  try {
+    const args = htaw.env.os === "windows" ? ["-n", String(veces), "127.0.0.1"] : ["-c", String(veces), "127.0.0.1"];
+    proc = await htaw.shell.spawn("ping", args, { encoding: "oem" }); // los programas de consola de Windows escriben en la pagina de codigos OEM
+    estado("p-estado", "en marcha (id " + proc.id + ")");
+    proc.on("stdout", (t) => log("p-log", "stdout: " + t.trimEnd()));
+    proc.on("stderr", (t) => log("p-log", "stderr: " + t.trimEnd(), "fallo"));
+    proc.on("exit", (c) => {
+      log("p-log", "exit " + c, c === 0 ? "ok" : "fallo");
+      estado("p-estado", "terminado, codigo " + c, c === 0);
+      proc = null;
+    });
+  } catch (e) { proc = null; log("p-log", "error: " + e.message, "fallo"); }
+}
+$("p-ping").onclick = () => lanzar(4);
+$("p-largo").onclick = () => lanzar(20);
+$("p-kill").onclick = async () => { if (proc) { await proc.kill(); log("p-log", "kill enviado"); } else log("p-log", "no hay proceso"); };
+$("p-host").onclick = async () => {
+  try {
+    const r = await htaw.shell.exec("hostname", [], { encoding: "oem" });
+    log("p-log", `exec hostname -> code ${r.code}, stdout ${JSON.stringify(r.stdout.trim())}`, r.code === 0 ? "ok" : "fallo");
+  } catch (e) { log("p-log", "error: " + e.message, "fallo"); }
+};
+$("p-prohibido").onclick = async () => {
+  try { await htaw.shell.exec("notepad"); log("p-log", "NO deberia haberse permitido", "fallo"); }
+  catch (e) { log("p-log", "rechazado como se esperaba: " + (e.code || "") + " " + e.message, "ok"); }
+};
+
+// ------------------------------------------------------------------ http.fetch
+async function pedir(url, opciones) {
+  const t0 = performance.now();
+  try {
+    const r = await htaw.http.fetch(url, opciones);
+    const ms = Math.round(performance.now() - t0);
+    log("h-log", `${opciones?.method || "GET"} ${url} -> ${r.status} ${r.statusText} (${ms} ms, ${r.body.length} caracteres)`, r.ok ? "ok" : "fallo");
+    log("h-log", "content-type: " + (r.headers["content-type"] || r.headers["Content-Type"] || "?") + "  inicio: " + r.body.slice(0, 120).replace(/\s+/g, " "));
+    estado("h-estado", r.status + " " + r.statusText, r.ok);
+    return r;
+  } catch (e) {
+    log("h-log", `${opciones?.method || "GET"} ${url} -> error: ${e.code || ""} ${e.message}`, "fallo");
+    estado("h-estado", "error", false);
+  }
+}
+$("h-go").onclick = () => pedir($("h-url").value, { method: $("h-metodo").value, timeout: Number($("h-timeout").value) || undefined });
+$("h-json").onclick = async () => {
+  const r = await pedir("https://jsonplaceholder.typicode.com/todos/1", { timeout: 8000 });
+  if (r?.ok) log("h-log", "json(): " + JSON.stringify(r.json()), "ok");
+};
+$("h-post").onclick = () => pedir("https://jsonplaceholder.typicode.com/posts", { method: "POST", body: { title: "htaW", body: "prueba", userId: 1 }, timeout: 8000 });
+$("h-mal").onclick = () => pedir("https://no-existe.invalid/", { timeout: 5000 });
+window.addEventListener("beforeunload", () => { vigilancia?.close(); proc?.kill(); });
+</script>
+</body>
+</html>

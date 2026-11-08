@@ -63,6 +63,8 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
         var html = StartPageHtml();
         _background = ResolveBackground(html);
         ApplyPageTitleBar(html);
+        ApplyPageBackdrop(html);
+        ApplyPageMenu(html);
         _native.Show();
     }
 
@@ -138,6 +140,12 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     public void Maximize() => _native.Maximize();
     public void Restore() => _native.Restore();
     public void Focus() => _native.Focus();
+
+    /// <summary>Oculta la ventana (sigue abierta y la pagina sigue viva). Se vuelve a ver con <see cref="Present"/>.</summary>
+    public void Hide() { if (!_isClosed) _native.SetVisible(false); }
+
+    /// <summary>Muestra la ventana si estaba oculta, la restaura si estaba minimizada y la pone delante.</summary>
+    public void Present() { if (!_isClosed) _native.SetVisible(true); }
     public void OpenDevTools() => _native.OpenDevTools();
     /// <summary>Recarga la pagina actual.</summary>
     public void Reload() => _native.Reload();
@@ -201,6 +209,7 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
 
     void IWindowHost.OnTitleBarEvent(GlueTitleBarEvent e)
     {
+        if (e.Id == WolfGlue.Native.GlueMenuItem.AboutId && e.Type == "click") { App.ShowAboutBox(); return; }
         TitleBarEvent?.Invoke(this, e);
         Emit("glue.titlebar", e);
     }
@@ -283,6 +292,73 @@ public sealed class GlueWindow : IBridgePeer, IWindowHost
     private static string? AsHtml(GlueResponse r) =>
         r is { Status: 200 } && r.ContentType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase)
             ? System.Text.Encoding.UTF8.GetString(r.Body.Span) : null;
+
+    /// <summary>Fondo pedido a la ventana: el suyo (o el que se le puso en caliente), el de la pagina o el de la app.</summary>
+    public GlueBackdrop Backdrop => _backdrop ?? Options.Backdrop ?? App.Options.Backdrop;
+
+    /// <summary>El efecto esta activo ahora mismo (el sistema lo permite y el usuario no quito las transparencias).</summary>
+    public bool BackdropActive { get; private set; }
+
+    private GlueBackdrop? _backdrop;
+
+    /// <summary>Cambia el fondo del sistema en caliente.</summary>
+    public void SetBackdrop(GlueBackdrop backdrop)
+    {
+        App.CheckThread();
+        _backdrop = backdrop;
+        if (!_isClosed) _native.UpdateBackdrop();
+    }
+
+    private void ApplyPageBackdrop(string? html)
+    {
+        if (Options.Backdrop is not null || html is null || App.Options.PageBackdrop is not { } read) return;
+        try { if (read(html) is { } b) _backdrop ??= b; }
+        catch (Exception) { /* bloque no valido: se queda el fondo de la app */ }
+    }
+
+    /// <summary>Menu de ventana actual (null = ninguno).</summary>
+    public IReadOnlyList<WolfGlue.Native.GlueMenuItem>? Menu => Options.Menu;
+
+    /// <summary>Pone, cambia o quita (null) el menu de ventana. Lanza <see cref="ArgumentException"/> si no es valido.</summary>
+    public void SetMenu(List<WolfGlue.Native.GlueMenuItem>? menu)
+    {
+        App.CheckThread();
+        if (menu is not null) WolfGlue.Native.GlueMenuItem.ValidateBar(menu);
+        Options.Menu = menu;
+        if (!_isClosed) _native.SetMenu(menu);
+    }
+
+    private void ApplyPageMenu(string? html)
+    {
+        if (Options.Menu is not null || html is null || App.Options.PageMenu is not { } read) return;
+        try
+        {
+            if (read(html) is not { } menu) return;
+            WolfGlue.Native.GlueMenuItem.ValidateBar(menu);
+            Options.Menu = menu;
+        }
+        catch (Exception) { /* menu de la pagina no valido: sin menu */ }
+    }
+
+    void IWindowHost.OnMenuState(bool on, bool keyMode, string mnemonics) =>
+        Emit("glue.window.menuState", new WolfGlue.Native.MenuStateEvent { On = on, KeyMode = keyMode, Mnemonics = mnemonics });
+
+    internal void MenuKey(int kind, uint vk) { if (!_isClosed) _native.MenuKey(kind, vk); }
+
+    void IWindowHost.OnMenuEvent(string id)
+    {
+        if (id == WolfGlue.Native.GlueMenuItem.AboutId) { App.ShowAboutBox(); return; }
+        Emit("glue.window.menu", new WolfGlue.Native.WindowMenuEvent { Id = id });
+    }
+
+    GlueBackdrop IWindowHost.Backdrop => Backdrop;
+    bool IWindowHost.BackdropActive => BackdropActive;
+
+    void IWindowHost.OnBackdropChanged(bool active)
+    {
+        BackdropActive = active;
+        Emit("glue.backdrop", new BackdropEvent { Requested = Backdrop.ToName(), Active = active });
+    }
 
     /// <summary>Barra de titulo declarada en la pagina inicial, si la ventana no trae una y lo permite.</summary>
     private void ApplyPageTitleBar(string? html)

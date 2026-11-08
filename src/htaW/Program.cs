@@ -100,6 +100,7 @@ internal static partial class Program
         using var pkg = HtawPackage.Open(path, allowFolder: dev);
         // Solo se anota lo que se abre bien: la lista del panel no se llena de rutas que fallan.
         if (dev) new DevRecents(DevRecents.DefaultFile).Add(pkg.SourcePath);
+        else new AppRecents(AppRecents.DefaultFile).Add(pkg.SourcePath, pkg.DisplayName, pkg.Icon);
         return new HtawHost(pkg, args, dev).Run();
     }
 
@@ -111,6 +112,12 @@ internal static partial class Program
         var store = new TrustStore(TrustStore.DefaultFile);
         if (File.Exists(target))
         {
+            // Un ejecutable portable lleva la app dentro: se olvida la confianza de esa app incrustada.
+            if (EmbeddedApp.Find(target) is { } embedded)
+            {
+                using var emb = HtawPackage.OpenEmbedded(target, embedded);
+                return store.Forget(Convert.ToHexStringLower(emb.ComputeHash()), emb.Id);
+            }
             using var pkg = HtawPackage.Open(target);
             return store.Forget(Convert.ToHexStringLower(pkg.ComputeHash()), pkg.Id);
         }

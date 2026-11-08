@@ -68,6 +68,38 @@
     send(JSON.stringify({ t: "emit", n: name, d: data === undefined ? null : data, to }));
   }
 
+  // Fondo del sistema activo: clase glue-backdrop-tinted / glue-backdrop-blurred en <html> y evento glue.backdrop.
+  let backdrop = "solid";
+  function setBackdropClass(active) {
+    backdrop = active;
+    const apply = () => {
+      const r = document.documentElement;
+      if (!r) return false;
+      r.classList.remove("glue-backdrop-tinted", "glue-backdrop-blurred");
+      if (active !== "solid") r.classList.add("glue-backdrop-" + active);
+      return true;
+    };
+    if (!apply()) new MutationObserver((_, o) => { if (apply()) o.disconnect(); }).observe(document, { childList: true });
+  }
+  if (init.backdrop && init.backdrop !== "solid") setBackdropClass(init.backdrop);
+  on("glue.backdrop", (d) => { if (d) setBackdropClass(d.active ? d.requested : "solid"); });
+
+  // Menu de ventana y teclado: con el foco en la pagina, el webview se queda con Alt, F10 y las flechas. Si la ventana tiene menu
+  // (el host lo avisa con glue.window.menuState), se reenvian al host, que es quien lo dibuja y lo abre.
+  let menuOn = false, menuKeys = false, menuMnemonics = "";
+  on("glue.window.menuState", (d) => { menuOn = !!d.on; menuKeys = !!d.keyMode; menuMnemonics = d.mnemonics || ""; });
+  const menuKey = (kind, vk) => call("glue.window.menuKey", { kind, vk }).catch(() => {});
+  const NAV = [13, 27, 32, 37, 38, 39, 40];
+  addEventListener("keydown", (e) => {
+    if (!menuOn || e.isComposing) return;
+    const vk = e.keyCode, letter = /^[a-z0-9]$/i.test(e.key) ? e.key.toUpperCase() : "";
+    if (e.key === "Alt") { if (!e.repeat) menuKey(2, 0x12); return; }
+    if (e.key === "F10" && !e.shiftKey) { e.preventDefault(); menuKey(2, vk); return; }
+    if (menuKeys) { if (NAV.includes(vk) || letter) e.preventDefault(); menuKey(e.altKey ? 2 : 0, vk); return; }
+    if (e.altKey && letter && menuMnemonics.includes(letter)) { e.preventDefault(); menuKey(2, vk); }
+  }, true);
+  addEventListener("keyup", (e) => { if (menuOn && e.key === "Alt") { e.preventDefault(); menuKey(3, 0x12); } }, true);
+
   // Confirmacion de cierre: cada fn(), sincrona o con promesa, puede devolver false para que la ventana siga abierta.
   // Solo cuando el cierre lo pide el usuario o el sistema; glue.window.close() desde la pagina no pregunta.
   const closingHandlers = new Set();
@@ -95,6 +127,16 @@
     setTitle: (title) => call("glue.window.setTitle", String(title)),
     setSize: (width, height) => call("glue.window.setSize", { width, height }),
     center: () => call("glue.window.center"),
+    // "solid" | "tinted" | "blurred"; glue.window.backdrop = el efecto activo ahora mismo
+    // Menu de ventana (render propio en la barra de titulo): menu.set([{ text, items: [...] }] | null); menu.on(fn(id)) → funcion para dejar de escuchar
+    menu: Object.freeze({
+      set: (menus) => call("glue.window.menu.set", menus == null ? null : menus),
+      on: (fn) => on("glue.window.menu", (d) => fn(d.id)),
+    }),
+    setBackdrop: (value) => call("glue.window.setBackdrop", String(value)),
+    get backdrop() { return backdrop; },
+    show: () => call("glue.window.show"),
+    hide: () => call("glue.window.hide"),
     minimize: () => call("glue.window.minimize"),
     maximize: () => call("glue.window.maximize"),
     restore: () => call("glue.window.restore"),
@@ -173,6 +215,32 @@
     writeImage: async (data) => call("glue.clipboard.writeImage", await image.toPngBase64(data)),
   });
 
+  const notifications = Object.freeze({
+    // { id?, title, body?, silent?, buttons?: [{ id, text }] (max. 2) } → id
+    show: (n) => call("glue.notifications.show", n),
+    close: (id) => call("glue.notifications.close", String(id)),
+    // → "granted" | "denied"
+    permission: () => call("glue.notifications.permission"),
+    // fn({ type: "click" | "button", id, button? }) → funcion para dejar de escuchar
+    on: (fn) => on("glue.notification", fn),
+  });
+
+  const menu = Object.freeze({
+    // popup(items, { x?, y? }) → id de la opcion elegida | null. x, y en pixeles CSS de la pagina (clientX/clientY); sin ellos, junto al raton.
+    // items: [{ id, text, enabled?, checked?, shortcut?, items?: [...] } | { type: "separator" }]
+    popup: (items, position) => call("glue.menu.popup", { items, x: position?.x, y: position?.y }),
+  });
+
+  const tray = Object.freeze({
+    // { icon?, color?, tooltip?, menu: [{ id, text, enabled?, checked?, default? } | { type: "separator" }] }
+    set: (t) => call("glue.tray.set", t),
+    remove: () => call("glue.tray.remove"),
+    update: (id, changes) => call("glue.tray.update", { id: String(id), changes: changes || {} }),
+    available: () => call("glue.tray.available"),
+    // fn(id) -> funcion para dejar de escuchar
+    on: (type, fn) => type === "click" ? on("glue.tray", (d) => fn(d.id)) : () => {},
+  });
+
   const shell = Object.freeze({
     openUrl: (url) => call("glue.shell.openUrl", String(url)),
     open: (path) => call("glue.shell.open", String(path)),
@@ -190,12 +258,14 @@
     platform: init.platform || "",
     call, on, off, emit, services,
     window: win,
-    dialog, clipboard, shell,
+    dialog, clipboard, shell, notifications, tray, menu,
     // → [{ bounds, workArea, scale, primary }]
     screens: () => call("glue.screens"),
     // → { dark, accent, fontFamily, fontSize, highContrast }; cambios con glue.on("glue.theme", fn)
     theme: () => call("glue.theme"),
     quit: (code) => call("glue.app.quit", code || 0),
+    // Abre la ventana «Acerca de» (la de la app o una generica)
+    aboutBox: () => call("glue.app.showAboutBox"),
     _receive: receive,
     _image: image,
   });

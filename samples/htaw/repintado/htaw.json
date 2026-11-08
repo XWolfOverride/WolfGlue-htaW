@@ -1,0 +1,13 @@
+{
+  "id": "wolfglue.ejemplo.repintado",
+  "name": "Prueba de repintado",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": {
+    "width": 640, "height": 420, "backdrop": "tinted",
+    "menu": [
+      { "text": "&Archivo", "items": [ { "id": "salir", "text": "&Salir" } ] },
+      { "text": "&Ver", "items": [ { "id": "x", "text": "Nada" } ] }
+    ]
+  }
+}

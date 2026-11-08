@@ -15,6 +15,8 @@ download it.
 | `env` | `htaw.env` (environment variables and user folders) | Read environment variables and user folders |
 | `shell.open` | `htaw.shell.open` and `htaw.shell.reveal` | Open files and addresses with other applications |
 | `links.auto` | Links and `window.open` to other websites open without a user click (for example, from a timer) | Open web pages in the browser without you asking |
+| `notifications` | `htaw.notify` (system notifications) | Show system notifications |
+| `tray` | `htaw.tray` (icon next to the clock and staying open with the window closed) | Show an icon next to the clock and keep running in the background |
 | `shell.exec` | `htaw.shell.exec` and `htaw.shell.spawn`, with a list of programs | Run these programs: … |
 
 Always available, without permission: `htaw.app`, `htaw.window`, `htaw.settings`, `htaw.theme`, `htaw.permissions`,

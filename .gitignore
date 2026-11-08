@@ -15,3 +15,8 @@ artifacts/
 
 # Ejemplo empaquetado (se genera con: htaw pack samples/htaw/notas)
 /samples/htaw/notas.htaw
+
+# Registro de diagnostico (solo compilaciones Debug)
+wolfglue-debug.log
+wolfglue-debug.pipe
+wolfglue-debug-*.png

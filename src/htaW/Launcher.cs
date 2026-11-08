@@ -77,6 +77,22 @@ internal sealed class Launcher
             return true;
         });
 
+        // Apps recientes: solo rutas de la lista; se abren como "Abrir" (el panel se cierra).
+        b.Register<RunArgs, bool>("launcher.appRecent", a =>
+        {
+            if (a.Path is null || !new AppRecents(AppRecents.DefaultFile).Contains(a.Path))
+                throw new GlueException("NotFound", Strings.FileNotFound(a.Path ?? ""));
+            if (!File.Exists(a.Path)) throw new GlueException("NotFound", Strings.FileNotFound(a.Path));
+            Spawn([a.Path, .. CommandLine.Split(a.Args)]);
+            _app.Quit(0);
+            return true;
+        });
+        b.Register<string, LauncherState>("launcher.appForget", path =>
+        {
+            new AppRecents(AppRecents.DefaultFile).Remove(path ?? "");
+            return State();
+        });
+
         // Modo desarrollo: carpeta o archivo; el panel sigue abierto (se suele volver a el para empaquetar).
         b.Register<RunArgs, string?>("launcher.dev", async (a, ctx) =>
         {
@@ -225,6 +241,10 @@ internal sealed class Launcher
             DataDir = HtawPaths.Root,
             Help = Strings.Help,
             Recent = [.. new DevRecents(DevRecents.DefaultFile).Load().Select(RecentInfo)],
+            AppRecent = [.. new AppRecents(AppRecents.DefaultFile).Load().Select(r => new AppRecentInfo
+            {
+                Path = r.Path, Name = r.Name, Icon = r.Icon, Date = r.Date, Exists = File.Exists(r.Path),
+            })],
             Apps = [.. ids.Select(id => new TrustedApp
             {
                 Id = id,
@@ -309,6 +329,17 @@ public sealed class LauncherState
     public string Help { get; set; } = "";
     public TrustedApp[] Apps { get; set; } = [];
     public DevRecent[] Recent { get; set; } = [];
+    /// <summary>Apps abiertas con htaw (no en modo desarrollo), la mas reciente primero.</summary>
+    public AppRecentInfo[] AppRecent { get; set; } = [];
+}
+
+public sealed class AppRecentInfo
+{
+    public string Path { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string? Icon { get; set; }
+    public DateTime Date { get; set; }
+    public bool Exists { get; set; }
 }
 
 public sealed class DevRecent

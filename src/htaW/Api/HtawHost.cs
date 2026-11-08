@@ -53,10 +53,24 @@ internal sealed class HtawHost
             Background = pkg.Manifest.Theme == "native" ? HtawBackground : null,
             // Icono del manifiesto en todas las ventanas; si no hay, el del ejecutable.
             Icon = pkg.Icon,
+            // Notificaciones del sistema: cada app con su identificador y nombre (el mismo que el de la barra de tareas).
+            AppUserModelId = "htaW." + pkg.Id,
+            AppName = pkg.DisplayName,
+            Author = pkg.Manifest.Author,
+            Version = pkg.Manifest.Version,
+            AboutPage = AboutOf(pkg).Page,
+            AboutWidth = AboutOf(pkg).Width ?? 420,
+            AboutHeight = AboutOf(pkg).Height ?? 320,
+            PoweredBy = "htaW",
+            AboutIcon = Assets.Bytes("icon.png"),
+            // Ciclo de vida: por defecto la ventana principal manda (al cerrarla se cierra todo); "last" = vive mientras haya ventanas.
+            QuitMode = pkg.Manifest.Lifecycle == "last" ? GlueQuitMode.LastWindowClosed : GlueQuitMode.MainWindowClosed,
             // Enlaces y window.open a otras webs: solo con un clic o una tecla del usuario, salvo el permiso links.auto.
             ExternalLinksRequireUserAction = !_perms.Has("links.auto"),
             // Cada ventana toma la barra de titulo del bloque htaw+json de su pagina (window.titlebar), si lo tiene.
             PageTitleBar = PageTitleBar,
+            PageBackdrop = PageBackdrop,
+            PageMenu = PageMenu,
         });
         _app.Bridge.UseJson(ApiJson.Default);
         _app.Content = new HtawContent(pkg, _perms, () => HtmlInjector.ThemeStyle(_app.Native.Theme.Current));
@@ -81,6 +95,39 @@ internal sealed class HtawHost
         catch (Exception e) when (e is JsonException or FormatException) { return null; }
     }
 
+    private static (string? Page, int? Width, int? Height) AboutOf(HtawPackage pkg) =>
+        pkg.Manifest.About is { } ab ? HtaW.Package.Content.ReadAbout(ab) : (null, null, null);
+
+    /// <summary>Menu de ventana declarado por una pagina: <c>window.menu</c> del bloque <c>application/htaw+json</c> de su <c>&lt;head&gt;</c>.</summary>
+    internal static List<GlueMenuItem>? PageMenu(string html)
+    {
+        if (ManifestReader.ExtractFromHtml(html) is not { } json) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty("window", out var w) || w.ValueKind != JsonValueKind.Object
+                || !w.TryGetProperty("menu", out var m) || m.ValueKind != JsonValueKind.Array) return null;
+            return GlueMenuItem.ParseBar(m.GetRawText());
+        }
+        catch (Exception e) when (e is JsonException or FormatException) { return null; }
+    }
+
+    /// <summary>Fondo declarado por una pagina: <c>window.backdrop</c> del bloque <c>application/htaw+json</c> de su <c>&lt;head&gt;</c>.</summary>
+    internal static GlueBackdrop? PageBackdrop(string html)
+    {
+        if (ManifestReader.ExtractFromHtml(html) is not { } json) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty("window", out var w) || w.ValueKind != JsonValueKind.Object
+                || !w.TryGetProperty("backdrop", out var b) || b.ValueKind != JsonValueKind.String) return null;
+            return GlueBackdropExtensions.TryParse(b.GetString(), out var parsed) ? parsed : null;
+        }
+        catch (JsonException) { return null; }
+    }
+
     public int Run()
     {
         if (_pkg.Manifest.SingleInstance)
@@ -103,7 +150,7 @@ internal sealed class HtawHost
     private void OnSecondInstance(SecondInstanceInfo info)
     {
         if (_app.Windows.Count == 0) return;
-        _app.Windows[0].Focus();
+        _app.Windows[0].Present();
         _app.Emit("htaw.secondInstance", info);
     }
 
@@ -133,7 +180,19 @@ internal sealed class HtawHost
             Background = w.Background is null ? null : GlueBackground.Parse(w.Background),
             FadeInMs = w.FadeIn,
             TitleBar = w.ParsedTitleBar,
+            Backdrop = w.Backdrop is { } bd && WolfGlue.GlueBackdropExtensions.TryParse(bd, out var parsed) ? parsed : null,
+            Menu = w.ParsedMenu,
         });
+        if (_pkg.Manifest.Tray.KeepRunning && _perms.Has("tray"))
+        {
+            // Cerrar la ventana principal la oculta mientras haya icono en la bandeja; "Salir" del menu usa htaw.app.quit().
+            win.Closing += (_, e) =>
+            {
+                if (!_app.Native.Tray.IsSet) return;
+                e.Cancel = true;
+                win.Hide();
+            };
+        }
         win.Show();
         if (_dev) StartDevWatcher();
     }
@@ -171,6 +230,7 @@ internal sealed class HtawHost
                 Id = _pkg.Id,
                 Name = _pkg.DisplayName,
                 Version = _pkg.Manifest.Version,
+                Author = _pkg.Manifest.Author,
                 Args = _args,
                 Dir = _pkg.Directory,
                 File = _pkg.SourcePath,
@@ -239,6 +299,19 @@ internal sealed class HtawHost
         b.Register<MessageOptions, MessageResult>("htaw.dialog.message", (o, ctx) => Need("dialog", () => n.Dialogs.MessageAsync(o, ctx.Window)));
 
         // ------------------------------------------------------------- portapapeles
+        // Menu contextual nativo: sin permiso (solo devuelve a la pagina lo que el usuario elige).
+        b.Register<GlueMenuPopupArgs, string?>("htaw.menu.popup", (a, ctx) => PopupMenuAsync(n, a, ctx.Window));
+        b.Register<GlueTrayRequest>("htaw.tray.set", (o, ctx) => Need("tray", () => SetTrayAsync(n, o, ctx.Window)));
+        b.Register<JsonElement>("htaw.tray.remove", (_, _) => Need("tray", () => n.Tray.RemoveAsync()));
+        b.Register<GlueTrayUpdateArgs>("htaw.tray.update", (a, _) => Need("tray", () => UpdateTrayAsync(n, a)));
+        b.Register<JsonElement, bool>("htaw.tray.available", (_, _) => Need("tray", () => Task.FromResult(n.Tray.Available)));
+        b.Register<JsonElement>("htaw.window.show", (_, ctx) => { (ctx.Window ?? throw new GlueException("InvalidArgument", "sin ventana")).Present(); });
+        b.Register<JsonElement>("htaw.window.hide", (_, ctx) => { (ctx.Window ?? throw new GlueException("InvalidArgument", "sin ventana")).Hide(); });
+        b.Register<GlueNotification, string>("htaw.notify", (o, _) => Need("notifications", () => ShowNotification(n, o)));
+        b.Register<string>("htaw.notify.close", (id, _) => Need("notifications", () => n.Notifications.CloseAsync(id ?? "")));
+        b.Register<JsonElement, string>("htaw.notify.permission", (_, _) => Need("notifications", async () =>
+            (await n.Notifications.GetPermissionAsync()).ToString().ToLowerInvariant()));
+
         b.Register<JsonElement, string?>("htaw.clipboard.readText", (_, _) => Need("clipboard", () => n.Clipboard.GetTextAsync()));
         b.Register<string>("htaw.clipboard.writeText", (t, _) => Need("clipboard", () => n.Clipboard.SetTextAsync(t ?? "")));
         b.Register<JsonElement, string?>("htaw.clipboard.readImage", (_, _) => Need("clipboard", async () =>
@@ -318,6 +391,31 @@ internal sealed class HtawHost
 
         // ------------------------------------------------------------- entorno
         b.Register<string, string?>("htaw.env.get", name => { _perms.Require("env"); return Environment.GetEnvironmentVariable(name ?? ""); });
+    }
+
+    private static async Task<string?> PopupMenuAsync(GlueNative n, GlueMenuPopupArgs a, GlueWindow? window)
+    {
+        try { return await n.Menus.PopupAsync(a.Items, window, a.X is { } x && a.Y is { } y ? (x, y) : null); }
+        catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
+    }
+
+    private static async Task SetTrayAsync(GlueNative n, GlueTrayRequest o, GlueWindow? window)
+    {
+        try { await n.Tray.SetAsync(await o.ResolveAsync(window)); }
+        catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
+    }
+
+    private static async Task UpdateTrayAsync(GlueNative n, GlueTrayUpdateArgs a)
+    {
+        try { await n.Tray.UpdateAsync(a.Id, a.Changes ?? new()); }
+        catch (Exception e) when (e is ArgumentException or KeyNotFoundException or InvalidOperationException)
+        { throw new GlueException("InvalidArgument", e.Message); }
+    }
+
+    private static async Task<string> ShowNotification(GlueNative n, GlueNotification o)
+    {
+        try { return await n.Notifications.ShowAsync(o); }
+        catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
     }
 
     /// <summary>Comprueba el permiso antes de ejecutar la operacion asincrona.</summary>

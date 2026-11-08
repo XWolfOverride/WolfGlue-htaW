@@ -132,6 +132,8 @@ htaw.window.open("ayuda.html", { titlebar: { mode: "title", items: [
 htaw.window.open("acerca.html", { titlebar: false });
 ```
 
+**Icono de la ventana**: con barra propia, el clic en el icono muestra el menú del sistema y el **doble clic cierra la ventana**, como en Windows de siempre.
+
 ## Errores
 
 Una barra mal definida (un campo obligatorio que falta, un tipo o icono desconocido, dos elementos centrados…) en
@@ -140,3 +142,37 @@ Una barra mal definida (un campo obligatorio que falta, un tipo o icono desconoc
 definida se ignora y la ventana usa la barra normal.
 
 Ejemplo completo: `samples/htaw/barra` (`htaw samples/htaw/barra` para abrirlo en modo desarrollo).
+
+## Menú de ventana
+
+Un menú de ventana (Archivo, Editar, Ver, Ayuda…) que htaW coloca según el sistema: en Windows, **dentro de la barra de
+título** (con render propio, en claro u oscuro según el tema); en macOS, en la barra de menús global; en Linux, por
+definir. La app solo declara el menú, no dónde se muestra. **Sin permiso.**
+
+```json
+{ "window": { "menu": [
+  { "text": "&Archivo", "items": [
+    { "id": "abrir", "text": "&Abrir…", "shortcut": "Ctrl+O" },
+    { "type": "separator" },
+    { "id": "salir", "text": "&Salir" }
+  ] },
+  { "text": "&Editar", "items": [ { "id": "copiar", "text": "&Copiar", "shortcut": "Ctrl+C" } ] }
+] } }
+```
+
+```js
+htaw.window.menu.on("click", (id) => { if (id === "salir") htaw.app.quit(); });
+await htaw.window.menu.set(null);     // quitarlo; menu.set([...]) lo cambia en caliente
+```
+
+- Cada entrada de primer nivel es un menú con `text` e `items`. Las opciones son las de [`htaw.menu`](04-api.md#htawmenu--menús-contextuales)
+  (`id`, `text`, `enabled`, `checked`, `shortcut`, submenús hasta 4 niveles y separadores). `&` marca la tecla de acceso.
+- Se puede declarar en el manifiesto (`window.menu`), en el bloque `htaw+json` de cada página, en `htaw.window.open(página, { menu })`
+  o en caliente con `htaw.window.menu.set`. Un menú no válido da `InvalidArgument` (o un error de manifiesto).
+- **Dónde va en Windows:** sin barra propia, con `title` y con `compact`, en una fila fina bajo la barra (los iconos de la barra
+  se quedan donde siempre); con `labels`, en la fila superior: menús a la izquierda y icono + título centrados, con los
+  iconos con etiqueta debajo.
+- **Teclado y ratón**: Alt suelto o F10 activan la barra (flechas, Intro, Esc); Alt+letra abre el menú con esa tecla de acceso (el
+  `&` del texto: `"&Archivo"` -> Alt+A, subrayada al pulsar Alt). Con un menú abierto, pasar el ratón por otro o usar las flechas
+  izquierda y derecha cambia de menú. Si los menús no caben en una ventana estrecha, aparece un botón «···» que abre un menú con
+  los que sobran. Las teclas funcionan con el foco en la página (no cuando el foco está en un campo de búsqueda de la barra). `shortcut` solo se muestra: tu página atiende las teclas.

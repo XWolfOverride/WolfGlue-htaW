@@ -55,6 +55,10 @@
         <button class="primary" id="open" data-t="openButton"></button>
         <input type="text" id="args" data-tp="argsHint" spellcheck="false">
       </div>
+      <div id="appRecentBox" style="margin-top:12px">
+        <div class="muted" data-t="recentApps"></div>
+        <table><tbody id="appRecent"></tbody></table>
+      </div>
     </section>
 
     <section class="card">
@@ -143,6 +147,7 @@ const T = {
     openButton: "Abrir .htaw…", argsHint: "Argumentos para la app (opcional)",
     devTitle: "Modo desarrollo", devText: "Abre una carpeta o un archivo con DevTools y recarga automática al guardar. Usa también los argumentos de arriba.",
     devFolder: "Carpeta…", devFile: "Archivo…", devStarted: "Abierto en modo desarrollo:",
+    recentApps: "Aplicaciones recientes",
     recent: "Recientes", open: "Abrir", remove: "Quitar", missing: "ya no existe",
     packTitle: "Crear un .htaw", packText: "Valida el manifiesto (htaw.json) de una carpeta y la empaqueta en un único archivo .htaw.",
     packButton: "Empaquetar carpeta…", packed: (n) => `Creado con ${n} archivo${n === 1 ? "" : "s"}:`,
@@ -166,6 +171,7 @@ const T = {
     openButton: "Open .htaw…", argsHint: "Arguments for the app (optional)",
     devTitle: "Development mode", devText: "Opens a folder or a file with DevTools and automatic reload on save. It also uses the arguments above.",
     devFolder: "Folder…", devFile: "File…", devStarted: "Opened in development mode:",
+    recentApps: "Recent applications",
     recent: "Recent", open: "Open", remove: "Remove", missing: "no longer exists",
     packTitle: "Create a .htaw", packText: "Validates the manifest (htaw.json) of a folder and packs it into a single .htaw file.",
     packButton: "Pack folder…", packed: (n) => `Created with ${n} file${n === 1 ? "" : "s"}:`,
@@ -250,6 +256,36 @@ function render(s) {
   }
   $("forgetAll").disabled = s.apps.length === 0;
   renderRecent(s.recent);
+  renderAppRecent(s.appRecent);
+}
+
+function renderAppRecent(list) {
+  $("appRecentBox").style.display = list.length ? "" : "none";
+  const body = $("appRecent");
+  body.replaceChildren();
+  for (const r of list) {
+    const tr = body.insertRow();
+    if (!r.exists) tr.className = "missing";
+    const c = tr.insertCell();
+    if (r.icon) {
+      const img = document.createElement("img");
+      img.src = r.icon; img.alt = "";
+      img.style.cssText = "width:16px;height:16px;vertical-align:-3px;margin-right:6px";
+      c.append(img);
+    }
+    c.append(document.createTextNode(r.name));
+    const p = document.createElement("div");
+    p.className = "path muted"; p.textContent = r.path + (r.exists ? "" : " — " + L.missing);
+    c.append(p);
+    const a = tr.insertCell(); a.className = "act";
+    const open = document.createElement("button");
+    open.textContent = L.open; open.disabled = !r.exists;
+    open.onclick = () => act(open, () => call("launcher.appRecent", { path: r.path, args: $("args").value }));
+    const rm = document.createElement("button");
+    rm.textContent = L.remove;
+    rm.onclick = () => act(rm, async () => render(await call("launcher.appForget", r.path)));
+    a.append(open, rm);
+  }
 }
 
 function renderRecent(list) {

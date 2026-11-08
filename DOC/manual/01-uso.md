@@ -45,7 +45,7 @@ Abriendo `htaw.exe` sin ningún archivo aparece el panel, con estas secciones:
 
 | Sección | Para qué sirve |
 |---|---|
-| Abrir una aplicación | Elegir un `.htaw` y abrirlo. Opcionalmente, con argumentos para la app. El panel se cierra al abrirla. |
+| Abrir una aplicación | Elegir un `.htaw` y abrirlo. Opcionalmente, con argumentos para la app. El panel se cierra al abrirla. Debajo, las **10 últimas aplicaciones abiertas** con htaW (también con doble clic o desde la línea de comandos; no las del modo desarrollo ni los ejecutables portables), con nombre, icono y ruta: *Abrir* y *Quitar*; las que ya no existen salen marcadas. |
 | Modo desarrollo | Abrir una carpeta o un archivo en modo desarrollo, y la lista de **recientes** (Abrir / Quitar). Ver [Desarrollo](08-desarrollo-y-distribucion.md). |
 | Crear un .htaw | Empaquetar una carpeta de desarrollo en un único `.htaw`. |
 | Crear un ejecutable portable | Convertir una app (carpeta, `.htaw` o HTML) en un `.exe` que lleva htaW dentro. |
@@ -65,10 +65,11 @@ htaW guarda en `%LOCALAPPDATA%\htaW` (Windows):
 
 - `trust.json`: las aplicaciones a las que diste permiso;
 - `apps\<id>\settings.json`: los ajustes de cada aplicación;
+- `recent.json`: las últimas aplicaciones abiertas (nombre, icono, ruta y fecha);
 - `recent-dev.json`: las carpetas de desarrollo recientes;
 - `WebView2\`: los datos del navegador interno (almacenamiento web de cada app, caché).
 
-Para olvidar los permisos de una app: panel → *Permisos recordados* → *Olvidar*, o `htaw --forget <archivo|id>`.
+Para olvidar los permisos de una app: panel → *Permisos recordados* → *Olvidar*, o `htaw --forget <archivo|id>` (el archivo puede ser un `.htaw` o un ejecutable portable).
 
 ## Línea de comandos
 

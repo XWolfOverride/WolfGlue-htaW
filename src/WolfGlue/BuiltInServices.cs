@@ -28,6 +28,19 @@ internal static class BuiltInServices
         b.Register<string>("glue.window.setTitle", (title, ctx) => Win(ctx).Title = title);
         b.Register<SizeArgs>("glue.window.setSize", (s, ctx) => Win(ctx).SetSize(s.Width, s.Height));
         b.Register<JsonElement>("glue.window.center", (_, ctx) => Win(ctx).Center());
+        b.Register<MenuKeyArgs>("glue.window.menuKey", (a, ctx) => Win(ctx).MenuKey(a.Kind, a.Vk));
+        b.Register<JsonElement>("glue.window.menu.set", (json, ctx) =>
+        {
+            try { Win(ctx).SetMenu(ParseMenu(json)); }
+            catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
+        });
+        b.Register<string>("glue.window.setBackdrop", (name, ctx) =>
+        {
+            if (!GlueBackdropExtensions.TryParse(name, out var bd)) throw new GlueException("InvalidArgument", "Fondo no valido (solid, tinted o blurred): " + name);
+            Win(ctx).SetBackdrop(bd);
+        });
+        b.Register<JsonElement>("glue.window.show", (_, ctx) => Win(ctx).Present());
+        b.Register<JsonElement>("glue.window.hide", (_, ctx) => Win(ctx).Hide());
         b.Register<JsonElement>("glue.window.minimize", (_, ctx) => Win(ctx).Minimize());
         b.Register<JsonElement>("glue.window.maximize", (_, ctx) => Win(ctx).Maximize());
         b.Register<JsonElement>("glue.window.restore", (_, ctx) => Win(ctx).Restore());
@@ -73,8 +86,17 @@ internal static class BuiltInServices
                     catch (FormatException e) { throw new GlueException("InvalidArgument", e.Message); }
                 }
             }
+            var menu = a.Menu is { } mj ? ParseMenuOrThrow(mj) : null;
+            GlueBackdrop? backdrop = null;
+            if (a.Backdrop is not null)
+            {
+                if (!GlueBackdropExtensions.TryParse(a.Backdrop, out var bd)) throw new GlueException("InvalidArgument", "Fondo no valido (solid, tinted o blurred): " + a.Backdrop);
+                backdrop = bd;
+            }
             var w = app.CreateWindow(new GlueWindowOptions
             {
+                Backdrop = backdrop,
+                Menu = menu,
                 TitleBar = bar,
                 TitleBarFromPage = fromPage,
                 StartPage = url,
@@ -95,6 +117,7 @@ internal static class BuiltInServices
             return new WindowInfo { Id = w.Id, Result = result };
         });
 
+        b.Register<JsonElement>("glue.app.showAboutBox", (_, _) => { app.ShowAboutBox(); });
         b.Register<JsonElement>("glue.app.quit", (code, _) =>
             app.Quit(code.ValueKind == JsonValueKind.Number ? code.GetInt32() : 0));
     }
@@ -119,6 +142,13 @@ internal static class BuiltInServices
         b.Register<JsonElement, ScreenInfo[]>("glue.screens", _ => [.. n.Screens.GetAll()]);
         b.Register<JsonElement, ThemeInfo>("glue.theme", _ => n.Theme.Current);
 
+        b.Register<GlueTrayRequest>("glue.tray.set", async (o, ctx) => await SetTray(n, o, ctx.Window));
+        b.Register<JsonElement>("glue.tray.remove", (_, _) => n.Tray.RemoveAsync());
+        b.Register<GlueTrayUpdateArgs>("glue.tray.update", (a, _) => UpdateTray(n, a));
+        b.Register<JsonElement, bool>("glue.tray.available", _ => n.Tray.Available);
+
+        b.Register<GlueMenuPopupArgs, string?>("glue.menu.popup", (a, ctx) => PopupMenu(n, a, ctx.Window));
+
         b.Register<string>("glue.shell.openUrl", (url, _) =>
         {
             if (!Uri.TryCreate(url, UriKind.Absolute, out var u) || (u.Scheme != "https" && u.Scheme != "http" && u.Scheme != "mailto"))
@@ -126,7 +156,58 @@ internal static class BuiltInServices
             n.Shell.OpenUrl(u.AbsoluteUri);
         });
         b.Register<string>("glue.shell.open", (path, _) => n.Shell.Open(path));
+        b.Register<GlueNotification, string>("glue.notifications.show", (o, _) => ShowNotification(n, o));
+        b.Register<string>("glue.notifications.close", (id, _) => n.Notifications.CloseAsync(id ?? ""));
+        b.Register<System.Text.Json.JsonElement, string>("glue.notifications.permission", async (_, _) =>
+            (await n.Notifications.GetPermissionAsync()).ToString().ToLowerInvariant());
+
         b.Register<string>("glue.shell.reveal", (path, _) => n.Shell.Reveal(path));
+    }
+
+    /// <summary>Lee un menu de ventana en JSON (null o ausente = quitarlo). Lanza <see cref="ArgumentException"/> si no es valido.</summary>
+    internal static List<GlueMenuItem>? ParseMenu(JsonElement json)
+    {
+        if (json.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) return null;
+        try { return GlueMenuItem.ParseBar(json.GetRawText()); }
+        catch (FormatException e) { throw new ArgumentException(e.Message, e); }
+    }
+
+    private static List<GlueMenuItem>? ParseMenuOrThrow(JsonElement json)
+    {
+        try { return ParseMenu(json); }
+        catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
+    }
+
+    /// <summary>Menu contextual; un modelo no valido llega a la pagina como error de argumento.</summary>
+    internal static Task<string?> PopupMenu(GlueNative n, GlueMenuPopupArgs a, GlueWindow? window)
+    {
+        try
+        {
+            (double, double)? pos = a.X is { } x && a.Y is { } y ? (x, y) : null;
+            return n.Menus.PopupAsync(a.Items, window, pos);
+        }
+        catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
+    }
+
+    /// <summary>Pone el icono de la bandeja; un modelo no valido llega a la pagina como error de argumento.</summary>
+    internal static async Task SetTray(GlueNative n, GlueTrayRequest o, GlueWindow? window)
+    {
+        try { await n.Tray.SetAsync(await o.ResolveAsync(window)); }
+        catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
+    }
+
+    internal static async Task UpdateTray(GlueNative n, GlueTrayUpdateArgs a)
+    {
+        try { await n.Tray.UpdateAsync(a.Id, a.Changes ?? new()); }
+        catch (Exception e) when (e is ArgumentException or KeyNotFoundException or InvalidOperationException)
+        { throw new GlueException("InvalidArgument", e.Message); }
+    }
+
+    /// <summary>Muestra la notificacion; un modelo no valido llega a la pagina como error de argumento.</summary>
+    internal static async Task<string> ShowNotification(GlueNative n, GlueNotification o)
+    {
+        try { return await n.Notifications.ShowAsync(o); }
+        catch (ArgumentException e) { throw new GlueException("InvalidArgument", e.Message); }
     }
 
     private static GlueWindow Win(GlueCallContext ctx) =>

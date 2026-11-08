@@ -84,6 +84,31 @@ public sealed class GlueApp
     /// <summary>Crea una ventana (no se muestra hasta <see cref="GlueWindow.Show"/>).</summary>
     public GlueWindow CreateWindow(GlueWindowOptions options) => new(this, options);
 
+    /// <summary>
+    /// Muestra la ventana «Acerca de»: la que la app haya marcado (<see cref="GlueWindowOptions.IsAbout"/>), su pagina propia
+    /// (<see cref="GlueAppOptions.AboutPage"/>) o una generica con nombre, version, autor, icono y «Desarrollado con …». Si ya esta
+    /// abierta, la trae al frente. En macOS es lo que abre la opcion «Acerca de» del menu de la aplicacion.
+    /// </summary>
+    public GlueWindow ShowAboutBox()
+    {
+        CheckThread();
+        if (_windows.FirstOrDefault(w => w.Options.IsAbout && !w.IsClosed) is { } open) { open.Present(); return open; }
+        var o = new GlueWindowOptions
+        {
+            Title = Strings.AboutTitle(Options.AppName ?? Options.AppId),
+            IsAbout = true,
+            Width = Options.AboutWidth,
+            Height = Options.AboutHeight,
+            Resizable = false,
+            Owner = MainWindow is { IsClosed: false } m ? m : null,
+        };
+        if (Options.AboutPage is { Length: > 0 } page) o.StartPage = page;
+        else o.Content = new GlueAbout.Content(Options);
+        var win = CreateWindow(o);
+        win.Show();
+        return win;
+    }
+
     /// <summary>Busca una ventana por su id.</summary>
     public GlueWindow? FindWindow(string id) => _windows.FirstOrDefault(w => w.Id == id);
 
@@ -98,6 +123,8 @@ public sealed class GlueApp
         try { return _platform.Run(); }
         finally
         {
+            Native.Notifications.CloseAll();
+            Native.Tray.Cleanup();
             SynchronizationContext.SetSynchronizationContext(prev);
             _running = false;
         }
@@ -179,6 +206,9 @@ public sealed class GlueApp
     internal void Detach(GlueWindow w)
     {
         _windows.Remove(w);
+        // Ventana principal cerrada: el resto se cierra con ella.
+        if (Options.QuitMode == GlueQuitMode.MainWindowClosed && w == MainWindow)
+            foreach (var other in _windows.ToArray()) other.ForceClose();
         bool quit = Options.QuitMode switch
         {
             GlueQuitMode.LastWindowClosed => _windows.Count == 0,

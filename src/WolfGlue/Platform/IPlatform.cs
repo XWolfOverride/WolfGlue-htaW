@@ -45,6 +45,17 @@ internal interface IPlatformServices
     void Open(string path);
     /// <summary>Muestra el archivo seleccionado en el explorador de archivos.</summary>
     void Reveal(string path);
+    /// <summary>Muestra (o sustituye, si ya hay una con ese id) una notificacion del sistema.</summary>
+    void ShowNotification(string id, Native.GlueNotification n);
+    void CloseNotification(string id);
+    void CloseAllNotifications();
+    Native.NotificationPermission GetNotificationPermission();
+    /// <summary>Hay bandeja del sistema.</summary>
+    bool TrayAvailable { get; }
+    /// <summary>Pone, cambia (misma llamada) o quita (null) el icono de la bandeja.</summary>
+    void SetTray(Native.GlueTray? tray);
+    /// <summary>Menu contextual modal; devuelve el id elegido o null. <paramref name="position"/> es relativa al contenido de <paramref name="owner"/> (unidades logicas).</summary>
+    string? ShowMenu(IPlatformWindow? owner, IReadOnlyList<Native.GlueMenuItem> items, (double X, double Y)? position);
 }
 
 /// <summary>Ventana nativa con su webview.</summary>
@@ -69,6 +80,14 @@ internal interface IPlatformWindow
     void SetTitleBar(GlueTitleBar? bar);
     /// <summary>Da el foco a un elemento de la barra (el campo de busqueda).</summary>
     void FocusTitleBarItem(string id);
+    /// <summary>Oculta o vuelve a mostrar (y pone delante) la ventana.</summary>
+    void SetVisible(bool visible);
+    /// <summary>Vuelve a leer <see cref="IWindowHost.Backdrop"/> y lo aplica.</summary>
+    void UpdateBackdrop();
+    /// <summary>Pone, cambia o quita (null) el menu de ventana (render propio dentro de la barra de titulo).</summary>
+    void SetMenu(IReadOnlyList<Native.GlueMenuItem>? menu);
+    /// <summary>Tecla que la pagina reenvia al menu de ventana (el webview se queda con Alt y las flechas cuando tiene el foco).</summary>
+    void MenuKey(int kind, uint vk);
 }
 
 /// <summary>Lo que la ventana nativa notifica a <see cref="GlueWindow"/>. Todo en el hilo de UI.</summary>
@@ -99,4 +118,14 @@ internal interface IWindowHost
     void OnTitleBarEvent(GlueTitleBarEvent e);
     /// <summary>Bytes de un archivo de la barra (icono o fuente; ruta del origen propio o URL data:); null si no se encuentra.</summary>
     Task<byte[]?> LoadTitleBarFileAsync(string src);
+    /// <summary>Fondo del sistema pedido (propio de la ventana, de la pagina o de la app).</summary>
+    GlueBackdrop Backdrop { get; }
+    /// <summary>El efecto esta activo ahora mismo.</summary>
+    bool BackdropActive { get; }
+    /// <summary>El backend informa: el efecto esta (o deja de estar) activo, o ha cambiado lo pedido.</summary>
+    void OnBackdropChanged(bool active);
+    /// <summary>Se eligio una opcion del menu de ventana.</summary>
+    void OnMenuEvent(string id);
+    /// <summary>El estado del menu de ventana cambio: puesto o no, foco del teclado y letras de acceso.</summary>
+    void OnMenuState(bool on, bool keyMode, string mnemonics);
 }

@@ -15,6 +15,9 @@ public sealed class GlueNative
         Screens = new NativeScreens(app);
         Theme = new NativeTheme(app);
         Shell = new NativeShell(app);
+        Notifications = new NativeNotifications(app);
+        Tray = new NativeTray(app);
+        Menus = new NativeMenus(app);
     }
 
     public NativeDialogs Dialogs { get; }
@@ -22,6 +25,9 @@ public sealed class GlueNative
     public NativeScreens Screens { get; }
     public NativeTheme Theme { get; }
     public NativeShell Shell { get; }
+    public NativeNotifications Notifications { get; }
+    public NativeTray Tray { get; }
+    public NativeMenus Menus { get; }
 
     /// <summary>
     /// Ejecuta en el hilo de UI, siempre encolado (nunca en linea): asi un dialogo modal no se abre dentro de

@@ -94,6 +94,26 @@ user changes them while the app is open.
 If you change the background, set the same colour in the manifest's `window.background` (or in a
 `<meta name="theme-color">`) so the window appears with it already (see [The manifest](03-manifest.md)).
 
+## System backdrop (`window.backdrop`)
+
+With `window.backdrop` set to `"tinted"` (Mica) or `"blurred"` (Acrylic) the system material shows **behind** the page, so
+the page must not paint an opaque background. With `theme: "native"` this is already handled: while the effect is active,
+WolfGlue puts the class `glue-backdrop-tinted` or `glue-backdrop-blurred` on `<html>` and `htaw.css`
+
+- makes `--htaw-bg` (the `html` and `body` background) transparent, and
+- makes `--htaw-surface`, `--htaw-control-bg`, `--htaw-control-hover`, `--htaw-control-active` and `--htaw-border`
+  semi-transparent, so cards, panels and controls let the material show through like system apps.
+
+When the effect turns off (the user disables transparency effects, the system does not support it) the class goes away
+and everything returns to the usual solid colors, with no CSS of your own. With `theme: "none"` or for your own CSS:
+
+```css
+html.glue-backdrop-tinted .my-panel { background: rgb(255 255 255 / .5); }
+```
+
+`htaw.theme.backdrop` gives the active effect from JavaScript. The custom title bar (`window.titlebar`) keeps its solid
+color: a visible seam between it and the material is possible.
+
 ## Per system
 
 `<html>` has `data-os="windows"`, `"macos"` or `"linux"`, in case you need to adjust something:

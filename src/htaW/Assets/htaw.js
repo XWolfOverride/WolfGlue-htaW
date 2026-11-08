@@ -40,6 +40,12 @@
 
   const theme = Object.assign({ dark: matchMedia("(prefers-color-scheme: dark)").matches, os: init.os || "" }, init.theme || {});
   const themeListeners = new Set();
+  // Efecto de fondo del sistema activo ahora mismo: "solid" | "tinted" | "blurred" (theme.backdrop)
+  theme.backdrop = glue.window.backdrop || "solid";
+  glue.on("glue.backdrop", (d) => {
+    theme.backdrop = d && d.active ? d.requested : "solid";
+    for (const fn of [...themeListeners]) { try { fn(theme); } catch (e) { console.error(e); } }
+  });
   glue.on("glue.theme", (t) => {
     Object.assign(theme, t);
     applyTheme(t); // solo actua si esta el <style id="htaw-theme"> (theme "native")
@@ -98,11 +104,14 @@
     id: init.app?.id || "",
     name: init.app?.name || "",
     version: init.app?.version || null,
+    author: init.app?.author || null,
     args: Object.freeze([...(init.app?.args || [])]),
     dir: init.app?.dir || null,
     file: init.app?.file || "",
     dev: !!init.dev,
     quit: (code) => glue.quit(code || 0),
+    // Abre la ventana «Acerca de»: la de la app (manifiesto "about") o una generica con nombre, version, autor e icono
+    showAboutBox: () => glue.aboutBox(),
     relaunch: () => call("htaw.app.relaunch"),
     // on("secondInstance", fn({ args, cwd })): la app se ha vuelto a abrir (solo con singleInstance)
     on(type, fn) {
@@ -120,6 +129,16 @@
     maximize: glue.window.maximize,
     restore: glue.window.restore,
     close: glue.window.close,
+    // setBackdrop("solid" | "tinted" | "blurred"): fondo del sistema de esta ventana (el efecto activo esta en htaw.theme.backdrop)
+    setBackdrop: glue.window.setBackdrop,
+    // Menu de ventana (Archivo, Editar...): menu.set([{ text, items: [...] }] | null); menu.on("click", fn(id)) → funcion para dejar de escuchar
+    menu: Object.freeze({
+      set: glue.window.menu.set,
+      on: (type, fn) => type === "click" ? glue.window.menu.on(fn) : () => {},
+    }),
+    // show(): muestra (y pone delante) la ventana si estaba oculta o minimizada; hide(): la oculta sin cerrarla
+    show: () => call("htaw.window.show"),
+    hide: () => call("htaw.window.hide"),
     // onClosing(fn): fn() (o su promesa) devuelve false para no cerrar; devuelve la funcion para quitarla
     onClosing: glue.window.onClosing,
     // Barra de titulo propia: set(definicion | null), update(id, cambios), focus(id), on(tipo, fn(id, {button, value}))
@@ -230,6 +249,31 @@
     writeImage: async (data) => call("htaw.clipboard.writeImage", await glue._image.toPngBase64(data)),
   });
 
+  // Menu contextual nativo (sin permiso). popup(items, { x?, y? }) → id de la opcion elegida | null
+  // items: [{ id, text, enabled?, checked?, shortcut?, items?: [...] } | { type: "separator" }]; x, y en pixeles CSS (clientX/clientY)
+  const menu = Object.freeze({
+    popup: (items, position) => call("htaw.menu.popup", { items, x: position?.x, y: position?.y }),
+  });
+
+  // Icono en la bandeja del sistema (permiso "tray"). set({ icon?, color?, tooltip?, menu: [{ id, text, enabled?, checked?, default? } | { type: "separator" }] })
+  const tray = Object.freeze({
+    set: (t) => call("htaw.tray.set", t),
+    remove: () => call("htaw.tray.remove"),
+    update: (id, changes) => call("htaw.tray.update", { id: String(id), changes: changes || {} }),
+    available: () => call("htaw.tray.available"),
+    // on("click", fn(id)): se eligio una opcion del menu (o la "default" con el clic izquierdo) → funcion para dejar de escuchar
+    on: (type, fn) => type === "click" ? glue.on("glue.tray", (d) => fn(d.id)) : () => {},
+  });
+
+  // Notificaciones del sistema (permiso "notifications"). notify({ id?, title, body?, silent?, buttons?: [{ id, text }] }) → id
+  const notify = Object.assign((n) => call("htaw.notify", n), {
+    close: (id) => call("htaw.notify.close", String(id)),
+    // → "granted" | "denied"
+    permission: () => call("htaw.notify.permission"),
+    // on("click", fn(id)) | on("button", fn(id, buttonId)) → funcion para dejar de escuchar
+    on: (type, fn) => glue.on("glue.notification", (d) => { if (d.type === type) fn(d.id, d.button ?? undefined); }),
+  });
+
   const env = Object.freeze(Object.assign({
     get: (name) => call("htaw.env.get", String(name)),
   }, init.env || {}));
@@ -239,7 +283,7 @@
   window.htaw = Object.freeze({
     app,
     window: win,
-    dialog, fs, shell, settings, http, clipboard, env,
+    dialog, fs, shell, settings, http, clipboard, notify, tray, menu, env,
     theme: Object.assign(theme, {
       on(type, fn) { if (type === "change") themeListeners.add(fn); return () => themeListeners.delete(fn); },
     }),

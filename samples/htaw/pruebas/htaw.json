@@ -1,0 +1,8 @@
+{
+  "id": "wolfglue.ejemplo.pruebas",
+  "name": "Pruebas fs.watch, spawn y http.fetch",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": { "width": 820, "height": 640, "minWidth": 560, "minHeight": 420 },
+  "permissions": ["fs", "env", "http", { "shell.exec": ["ping", "hostname"] }]
+}

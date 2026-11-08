@@ -39,8 +39,8 @@ system. Nothing to import.
   `/// <reference path="htaw.d.ts" />` at the top of your scripts to get autocompletion in editors such as VS Code.
 
 Index: [`app`](#htawapp) · [`window`](#htawwindow) · [`dialog`](#htawdialog) · [`fs`](#htawfs) ·
-[`shell`](#htawshell) · [`settings`](#htawsettings) · [`http`](#htawhttp) · [`clipboard`](#htawclipboard) ·
-[`env`](#htawenv) · [`theme`](#htawtheme) · [`permissions`](#htawpermissions-and-htawhas)
+[`shell`](#htawshell) · [`settings`](#htawsettings) · [`http`](#htawhttp) · [`clipboard`](#htawclipboard) · [`notify`](#htawnotify--permission-notifications) ·
+[`menu`](#htawmenu--context-menus) · [`tray`](#htawtray--permission-tray) · [`env`](#htawenv) · [`theme`](#htawtheme) · [`permissions`](#htawpermissions-and-htawhas)
 
 ---
 
@@ -52,12 +52,14 @@ Application data. **No permission.**
 |---|---|---|
 | `id` | `string` | Identifier (from the manifest or derived). |
 | `name` | `string` | Visible name. |
-| `version` | `string \| null` | Manifest version. |
+| `version` | `string \| `author` | `string | null` | The manifest's author. |
+| null` | Manifest version. |
 | `args` | `string[]` | Arguments it was opened with: `htaw app.htaw one "two three"` → `["one", "two three"]`. In a portable executable, all its arguments. |
 | `dir` | `string \| null` | App folder (standalone HTML, development folder, portable executable with HTML); `null` in a zip. |
 | `file` | `string` | Path of the `.htaw`, the folder or the portable `.exe`. |
 | `dev` | `boolean` | `true` in development mode. |
 | `quit(code?)` | `Promise<void>` | Closes the whole app with that exit code (0 by default). |
+| `showAboutBox()` | `void` | Opens the About window (the manifest's or a generic one); if already open, brings it to the front. See [Windows](07-windows.md#about). |
 | `relaunch()` | `Promise<void>` | Opens the app again with the same arguments (and mode) and closes this one. |
 | `on("secondInstance", fn)` | `() => void` | With `singleInstance`, the app was opened again (for example, with another file): `fn({ args, cwd })` receives the arguments of that opening and its current folder (to resolve relative paths). The main window has already come to the front. Returns the function to stop listening. |
 
@@ -82,12 +84,15 @@ The page's window. **No permission.** More detail and examples in [Windows and m
 | `center()` | Centres the window on its screen. |
 | `minimize()`, `maximize()`, `restore()` | Minimizes, maximizes or restores. |
 | `onClosing(fn)` | Before the window closes because the user or the system asks, `fn()` is called; if it returns `false` (or a promise that ends in `false`), the window stays open. Useful to warn about unsaved changes. `htaw.window.close()` does not ask. Returns the function to remove it. |
+| `setBackdrop(value)` | Changes this window's system backdrop on the fly: `"solid"`, `"tinted"` or `"blurred"` (invalid value: `InvalidArgument`). See [`window.backdrop`](03-manifest.md). |
 | `close(result?)` | Closes the window. In a modal window, `result` (any JSON value) reaches whoever opened it. Closing the last window closes the app. |
 | `open(page, options?)` | Opens another page of the app in a new window. Returns `{ id, result }`. |
+| `show()`, `hide()` | `show()` shows the window and brings it to the front (restoring it if hidden or minimized); `hide()` hides it without closing. See [`htaw.tray`](#htawtray--permission-tray). |
+| `menu` | Window menu (File, Edit…): `menu.set([{ text, items }] | null)` and `menu.on("click", fn(id))`. See [Window menus](10-title-bar.md#window-menu). |
 | `titlebar` | This window's custom title bar: `set`, `update`, `focus` and `on`. See [Title bar](10-title-bar.md). |
 
 `open` options: `title`, `width`, `height` (by default, those of the window that opens it), `resizable` (`true`),
-`modal` (`false`) and `titlebar` (a custom bar, or `false` for the normal bar even if the page declares one). With `modal: true` the window opens above the current one, blocks it while open, and `result` is a
+`modal` (`false`), `backdrop` (`"solid"`, `"tinted"` or `"blurred"`) and `titlebar` (a custom bar, or `false` for the normal bar even if the page declares one). With `modal: true` the window opens above the current one, blocks it while open, and `result` is a
 promise with whatever the other page passes to `htaw.window.close(value)` (`null` if it closed without a value).
 
 ```js
@@ -241,6 +246,8 @@ Runs a program, waits for it to finish and returns its exit code and its whole o
 | `env` | Environment variables **added** to the inherited ones: `{ LANG: "C" }`. |
 | `timeout` | Milliseconds. If exceeded, the process (and its children) is killed and the call fails with `Timeout`. |
 | `encoding` | Output encoding: `utf-8` (default), `oem` (Windows console) or a name such as `latin1`. |
+
+> **Odd accents in the output of `ping`, `ipconfig`, `dir`…**: Windows console programs write in the console's *OEM* code page (for example 850), not Unicode, even though the rest of the system uses it. Pass `{ encoding: "oem" }`. Modern tools (git, node, python in UTF-8 mode…) do emit UTF-8, the default.
 | `input` | Text sent to the standard input. |
 
 ```js
@@ -362,6 +369,102 @@ await htaw.clipboard.writeImage(document.querySelector("canvas"));
 
 ---
 
+## `htaw.notify` — **permission `notifications`**
+
+System notifications (on Windows, the pop-ups in the corner of the screen and the notification center).
+
+```js
+const id = await htaw.notify({
+  id: "download",               // optional: another notification with the same id replaces the previous one
+  title: "Download ready",
+  body: "report.pdf (2.3 MB)",  // optional
+  silent: false,                // true = no sound
+  buttons: [{ id: "open", text: "Open" }, { id: "close", text: "Close" }], // at most 2
+});
+
+htaw.notify.on("click", (id) => htaw.window.show?.());      // the user clicks the notification
+htaw.notify.on("button", (id, button) => { /* "open" */ });  // the user clicks a button
+await htaw.notify.close(id);                                  // withdraw it
+await htaw.notify.permission();                               // "granted" | "denied"
+```
+
+- No reply field, no HTML and no images: that is what every system offers.
+- `permission()` returns `"denied"` if the user turned off the app's notifications in the system; showing one then does
+  nothing visible.
+- **They only exist while the app is open**: they are all withdrawn when it closes, so none leaves a click that leads
+  nowhere. `on(...)` returns a function to stop listening.
+- Each app has its own name and icon on its notifications (the manifest's).
+- An empty title, more than 2 buttons or a button without `id` or `text` fail with `InvalidArgument`.
+
+## `htaw.menu` — context menus
+
+Native system menu (following the app's light or dark theme). **No permission**: it only returns to the page the option
+the user chooses.
+
+```js
+el.addEventListener("contextmenu", async (e) => {
+  e.preventDefault();
+  const id = await htaw.menu.popup([
+    { id: "copy", text: "Copy", shortcut: "Ctrl+C" },
+    { id: "paste", text: "Paste", shortcut: "Ctrl+V", enabled: false },
+    { type: "separator" },
+    { id: "bold", text: "Bold", checked: true },
+    { text: "Theme", items: [{ id: "light", text: "Light" }, { id: "dark", text: "Dark" }] },
+  ], { x: e.clientX, y: e.clientY });   // without the position, next to the mouse
+  if (id === "copy") { /* … */ }       // id of the chosen option, or null if closed without choosing
+});
+```
+
+- Options: `id`, `text`, `enabled` (`true`), `checked` (`false`), `shortcut` (display only: the page handles the keys),
+  `items` (submenu, up to 4 levels; it takes no `id`) and separators (`{ "type": "separator" }`).
+- `x` and `y` are CSS pixels of the page (`clientX` / `clientY`, or a button's `getBoundingClientRect()`).
+- In `text`, `&` marks the access key (`"&Copy"`); write `&&` for a literal `&`.
+- Empty menus, options without `text` or `id`, repeated `id`s or empty submenus fail with `InvalidArgument`.
+- The browser's default menus (right click in a text field) are disabled outside development mode: if you want
+  Copy/Paste in your fields, offer them yourself with this menu.
+
+## `htaw.tray` — **permission `tray`**
+
+An icon next to the clock (notification area) with a menu. An app has at most one.
+
+```js
+await htaw.tray.set({
+  icon: "img/tray.png",        // optional; without it, the app icon (always in color)
+  color: false,                // false = silhouette tinted to the taskbar theme; true = its own colors
+  tooltip: "Syncing…",
+  menu: [                      // MANDATORY: it is the only way to interact with the icon
+    { id: "open", text: "Open", default: true },     // the "default" option is the left-click one
+    { type: "separator" },
+    { id: "pause", text: "Pause", checked: false },
+    { id: "quit", text: "Quit" },
+  ],
+});
+
+htaw.tray.on("click", (id) => { if (id === "open") htaw.window.show(); if (id === "quit") htaw.app.quit(); });
+await htaw.tray.update("pause", { text: "Resume", checked: true });  // text, enabled, checked
+await htaw.tray.available();   // true if the system has a tray
+await htaw.tray.remove();
+```
+
+- Menu items: `id`, `text`, `enabled` (`true`), `checked` (`false`), `default` (at most one) and separators
+  (`{ "type": "separator" }`). No submenus. An empty menu, repeated ids, an option without `id` or `text` or more than
+  one `default` fail with `InvalidArgument`.
+- A left click (and a double click, only once) runs the `default` option; a right click opens the menu. `on("click")`
+  receives the `id` of the chosen option in both cases.
+- With a monochrome icon (`color: false`) only its transparency counts: it is painted white or near-black depending on
+  the taskbar theme and updated when that changes.
+- `htaw.window.show()` shows the window and brings it to the front (restoring it if it was minimized or hidden) and
+  `htaw.window.hide()` hides it without closing it.
+
+### Staying open with the window closed
+
+With `"tray": { "keepRunning": true }` in the manifest, **closing the main window hides it** instead of closing it: the
+page stays alive and serves the icon. The menu's "Quit" option must call `htaw.app.quit()`. This only happens while an
+icon is set; with `htaw.tray.remove()` (or if none was set) closing the window closes the app as usual, because a
+hidden app with no icon could never be shown again. Opening the app again with `singleInstance` shows it.
+
+The `tray` permission is shown to the user as "Show an icon next to the clock and keep running in the background".
+
 ## `htaw.env`
 
 System environment. **Permission `env`.**
@@ -373,6 +476,7 @@ System environment. **Permission `env`.**
 | `temp` | Temporary folder. |
 | `documents` | Documents folder. |
 | `os` | `"windows"`, `"macos"` or `"linux"`. |
+| `backdrop` | The system backdrop active right now in this window: `"solid"`, `"tinted"` or `"blurred"`. It is `"solid"` if none was requested or the system cannot (including when the user turns transparency effects off). It changes together with the `change` event. |
 | `arch` | Architecture (`"x64"`, `"arm64"`…). |
 
 Without the permission, the properties do not exist and `get` fails with `PermissionDenied`. (The operating system
@@ -432,6 +536,15 @@ document.getElementById("export").hidden = !htaw.has("fs");
   give them its own use (for example, Ctrl+F for its own search). They only work in development mode.
 - **Messages between windows**: `glue.emit` / `glue.on`, `BroadcastChannel` and the `storage` event; see
   [Windows and messaging](07-windows.md).
+- **Storage and standard web APIs**: the page is a normal web page, so you can use what you already know. Some common
+  questions:
+  - **IndexedDB** (and `localStorage`) work without a permission, isolated per app. IndexedDB is enough as a local
+    database: document stores with indexes and range queries. The data lives inside htaW's internal browser data
+    (`WebView2\`), not in a file the user can see: if it must be copyable or backed up, save it with `htaw.fs`
+    (`fs` permission). With the same `id` the data is kept; if it changes, the app starts empty.
+  - **WebAssembly** is available (`.wasm` files are served with their type, so
+    `WebAssembly.instantiateStreaming(fetch("m.wasm"))` works). It is useful for heavy computation or reusing code from
+    other languages, always without access to the system: that is what `htaw.fs`, `htaw.shell` and the rest of the API are for.
 - **The `glue` object**: the WolfGlue layer `htaw` is built on. Only `glue.emit`, `glue.on` and `glue.off` are meant
   to be used; its dialogs, clipboard and shell are disabled in htaW (use the `htaw` ones, which check permissions).
 

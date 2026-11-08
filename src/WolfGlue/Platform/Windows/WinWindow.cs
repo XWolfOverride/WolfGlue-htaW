@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
 using WolfGlue.Content;
+using WolfGlue.Native;
 
 namespace WolfGlue.Platform.Windows;
 
@@ -52,8 +53,11 @@ internal sealed class WinWindow : IPlatformWindow
             0, 0, 0, 0, Hwnd, 0, platform.HInstance, 0);
         _titleText = o.Title ?? "";
         ApplyTheme();
+        UpdateBackdrop();
         ApplyIcon();
-        if (o.TitleBar is { } bar) SetTitleBar(bar);
+        _menu = o.Menu;
+        if (o.TitleBar is { } bar) _barSpec = bar;
+        if (EffectiveBar is not null) ApplyBar();
     }
 
     // ------------------------------------------------------------- barra de titulo propia (WinTitleBar)
@@ -65,6 +69,45 @@ internal sealed class WinWindow : IPlatformWindow
     internal bool DarkMode => _platform.DarkMode;
     internal GlueRgb BarBackground => Background;
     internal bool Active => _active;
+    /// <summary>Alto de la franja de la barra propia en pixeles fisicos (el contenido empieza debajo).</summary>
+    internal int ContentTop => BarPx;
+#if DEBUG
+    /// <summary>Ejecuta JavaScript en la pagina (solo depuracion; el resultado lo entrega la propia pagina por el puente).</summary>
+    internal void DebugRunScript(string js)
+    {
+        if (_webview is null) throw new InvalidOperationException("el webview aun no esta listo");
+        _webview.ExecuteScript(js, new DebugScriptHandler());
+    }
+
+    /// <summary>Estado de la ventana para el canal de control de depuracion (rectangulos en pixeles fisicos).</summary>
+    internal void DebugWrite(System.Text.Json.Utf8JsonWriter w)
+    {
+        Win32.GetWindowRect(Hwnd, out var wr);
+        Win32.GetClientRect(Hwnd, out var cr);
+        w.WriteString("title", _titleText);
+        w.WriteNumber("hwnd", Hwnd);
+        w.WriteBoolean("visible", Win32.IsWindowVisible(Hwnd));
+        w.WriteBoolean("minimized", Win32.IsIconic(Hwnd));
+        w.WriteBoolean("maximized", IsMaximized);
+        w.WriteBoolean("active", _active);
+        w.WriteNumber("dpi", Dpi);
+        w.WriteBoolean("darkMode", DarkMode);
+        w.WriteStartObject("window"); w.WriteNumber("x", wr.Left); w.WriteNumber("y", wr.Top); w.WriteNumber("width", wr.Width); w.WriteNumber("height", wr.Height); w.WriteEndObject();
+        w.WriteStartObject("client"); w.WriteNumber("width", cr.Right); w.WriteNumber("height", cr.Bottom); w.WriteEndObject();
+        w.WriteStartObject("backdrop");
+        w.WriteString("requested", _host.Backdrop.ToName());
+        w.WriteBoolean("active", _backdropActive);
+        w.WriteBoolean("containerClipChildren", (Win32.GetWindowLongPtr(_container, Win32.GWL_STYLE) & Win32.WS_CLIPCHILDREN) != 0);
+        w.WriteEndObject();
+        w.WriteNumber("contentTop", ContentTop);
+        if (_bar is null) w.WriteNull("bar");
+        else { w.WriteStartObject("bar"); _bar.DebugWrite(w); w.WriteEndObject(); }
+    }
+#endif
+    /// <summary>Ejecuta algo en el hilo de UI, fuera del callback actual (los menus son modales).</summary>
+    internal void PostUi(Action a) => _platform.Post(a);
+    /// <summary>Devuelve el foco a la pagina.</summary>
+    internal void FocusPage() => FocusContent();
     internal string TitleText => _titleText;
     internal bool IsMaximized => Win32.IsZoomed(Hwnd);
     internal bool HasMaximize => (_style & Win32.WS_MAXIMIZEBOX) != 0;
@@ -85,9 +128,32 @@ internal sealed class WinWindow : IPlatformWindow
     /// <summary>Alto de la franja propia en pixeles fisicos (0 sin barra propia).</summary>
     private int BarPx => _bar?.HeightPx ?? 0;
 
+    private GlueTitleBar? _barSpec;
+    private IReadOnlyList<GlueMenuItem>? _menu;
+
+    /// <summary>Barra propia declarada; si no hay pero si hay menu de ventana, una barra `title` sin elementos que lo aloje.</summary>
+    private GlueTitleBar? EffectiveBar => _barSpec ?? (_menu is { Count: > 0 } ? new GlueTitleBar { Mode = GlueTitleBar.ModeTitle } : null);
+
     public void SetTitleBar(GlueTitleBar? bar)
     {
+        _barSpec = bar;
+        ApplyBar();
+    }
+
+    public void MenuKey(int kind, uint vk) => _bar?.OnAccelerator(kind, vk, 0, "pagina");
+
+    public void SetMenu(IReadOnlyList<GlueMenuItem>? menu)
+    {
+        _menu = menu;
+        ApplyBar();
+    }
+
+    internal void RaiseMenu(string id) => _host.OnMenuEvent(id);
+
+    private void ApplyBar()
+    {
         if (_destroyed) return;
+        var bar = EffectiveBar;
         if (bar is null)
         {
             if (_bar is null) return;
@@ -96,6 +162,8 @@ internal sealed class WinWindow : IPlatformWindow
         }
         else if (_bar is null) _bar = new WinTitleBar(this, bar);
         else _bar.Set(bar);
+        _bar?.SetMenu(_menu);
+        if (_backdropActive) ApplyFrameMargins();
         // Vuelve a calcular el area no cliente (WM_NCCALCSIZE) y recoloca el webview bajo la franja.
         Win32.SetWindowPos(Hwnd, 0, 0, 0, 0, 0, Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE | Win32.SWP_FRAMECHANGED);
         ResizeWebView();
@@ -151,6 +219,7 @@ internal sealed class WinWindow : IPlatformWindow
     public void Show()
     {
         var o = _host.Options;
+        UpdateBackdrop(); // la pagina inicial puede haber fijado el fondo
         PlaceWindow(o);
         if (o.Modal && _owner != 0) Win32.EnableWindow(_owner, false);
         if (o.ShowDelayMs > 0) Win32.SetTimer(Hwnd, RevealTimerId, (uint)o.ShowDelayMs, 0);
@@ -182,6 +251,8 @@ internal sealed class WinWindow : IPlatformWindow
         if (_destroyed) return;
         Reveal();
         _webview?.PostWebMessageAsString(Shim.FadeInMessage);
+        if (_backdropActive) _host.OnBackdropChanged(true); // la pagina nueva recibe el estado
+        _bar?.NotifyMenuState(); // idem el estado del menu de ventana (Alt, teclas de acceso)
         if (_contentShown) return;
         _contentShown = true;
         Win32.ShowWindow(_container, Win32.SW_SHOWNA);
@@ -221,6 +292,14 @@ internal sealed class WinWindow : IPlatformWindow
     public void Maximize() { if (!_destroyed) Win32.ShowWindow(Hwnd, Win32.SW_SHOWMAXIMIZED); }
     public void Restore() { if (!_destroyed) Win32.ShowWindow(Hwnd, Win32.SW_RESTORE); }
 
+    public void SetVisible(bool visible)
+    {
+        if (_destroyed) return;
+        if (!visible) { Win32.ShowWindow(Hwnd, Win32.SW_HIDE); return; }
+        if (!Win32.IsWindowVisible(Hwnd)) Win32.ShowWindow(Hwnd, _host.Options.Maximized ? Win32.SW_SHOWMAXIMIZED : Win32.SW_SHOWNORMAL);
+        Focus();
+    }
+
     public void Focus()
     {
         if (_destroyed) return;
@@ -257,7 +336,7 @@ internal sealed class WinWindow : IPlatformWindow
         var r = new RECT { Right = Scale(width, dpi), Bottom = Scale(height, dpi) };
         Win32.AdjustWindowRectExForDpi(ref r, _style, false, _exStyle, dpi);
         // Con barra propia no hay titulo ni borde superior del sistema: arriba va la franja (el contenido sigue midiendo lo pedido).
-        if (_bar is not null) { r.Bottom += Scale(WinTitleBar.LogicalHeightOf(_host.Options.TitleBar), dpi); r.Top = 0; }
+        if (_bar is not null) { r.Bottom += Scale(_bar.LogicalTotalHeight, dpi); r.Top = 0; }
         return r;
     }
 
@@ -298,6 +377,96 @@ internal sealed class WinWindow : IPlatformWindow
         Win32.InvalidateRect(Hwnd, 0, true);
     }
 
+    // -------------------------------------------------------------
+    // Fondo del sistema (Mica / Acrylic, Windows 11 22H2 o posterior).
+    private bool _backdropActive, _backdropNotified;
+    private GlueBackdrop _backdropNotifiedRequested;
+
+    internal static bool BackdropSupported => Environment.OSVersion.Version.Build >= 22621;
+
+    /// <summary>Efectos de transparencia de Personalizacion > Colores (si el usuario los quita, el material no se ve).</summary>
+    private static bool TransparencyEnabled()
+    {
+        try
+        {
+            using var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            return k?.GetValue("EnableTransparency") is not int v || v != 0;
+        }
+        catch { return true; }
+    }
+
+    /// <summary>
+    /// Con el fondo activo el webview es transparente y compone (DirectComposition) sobre lo que haya en la superficie de la ventana,
+    /// que sigue siendo GDI de toda la vida. Esa zona la cubre el contenedor, y con <c>WS_CLIPCHILDREN</c> el contenedor no puede
+    /// pintar bajo las ventanas del webview: lo que hubiera debajo (la barra antes de un cambio de DPI, de barra o de fondo) nunca se
+    /// invalida. Solo cuando cambia la disposicion (tamano, DPI, barra, fondo) se le quita el recorte un instante, se fuerza el
+    /// repintado de toda la zona (en negro, cristal) y se repone: el resto del tiempo conserva <c>WS_CLIPCHILDREN</c>, asi que el
+    /// contenido de la pagina (animaciones, canvas) no provoca repintados del contenedor.
+    /// </summary>
+    private void RepaintUnderWebView(string reason)
+    {
+        if (_destroyed) return;
+        if (DebugLog.Enabled) DebugLog.Event($"repintado forzado bajo el webview ({reason}, fondo activo: {_backdropActive})");
+        if (!_backdropActive)
+        {
+            SetContainerClip(true); // sin efecto, como siempre
+            return;
+        }
+        SetContainerClip(false);                                                                                                       // quitar
+        Win32.RedrawWindow(_container, 0, 0, Win32.RDW_INVALIDATE | Win32.RDW_ERASE | Win32.RDW_ALLCHILDREN | Win32.RDW_UPDATENOW);  // pintar
+        SetContainerClip(true);                                                                                                        // reponer
+    }
+
+    private void SetContainerClip(bool on)
+    {
+        var style = Win32.GetWindowLongPtr(_container, Win32.GWL_STYLE);
+        var wanted = on ? style | (nint)Win32.WS_CLIPCHILDREN : style & ~(nint)Win32.WS_CLIPCHILDREN;
+        if (wanted == style) return;
+        Win32.SetWindowLongPtr(_container, Win32.GWL_STYLE, wanted);
+        Win32.SetWindowPos(_container, 0, 0, 0, 0, 0, Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE | Win32.SWP_FRAMECHANGED);
+    }
+
+    /// <summary>
+    /// El material llega al area de cliente con margenes -1 (marco de cristal completo); sin efecto, se devuelve el marco normal.
+    /// Con barra propia el cristal no debe incluir la franja superior: si no, DWM dibuja sus botones de ventana encima de los de
+    /// la barra (duplicados). Esa franja la pinta WinTitleBar, asi que el margen superior es 0 y los demas cubren todo.
+    /// </summary>
+    private unsafe void ApplyFrameMargins()
+    {
+        int* margins = stackalloc int[4];
+        if (!_backdropActive) { margins[0] = margins[1] = margins[2] = margins[3] = 0; }
+        else if (_bar is not null) { margins[0] = margins[1] = margins[3] = 16384; margins[2] = 0; }
+        else { margins[0] = margins[1] = margins[2] = margins[3] = -1; }
+        Win32.DwmExtendFrameIntoClientArea(Hwnd, margins);
+    }
+
+    public unsafe void UpdateBackdrop()
+    {
+        if (_destroyed) return;
+        var requested = _host.Backdrop;
+        bool active = requested != GlueBackdrop.Solid && BackdropSupported && TransparencyEnabled();
+        bool changed = active != _backdropActive;
+        bool wasActive = _backdropActive;
+        if (active || wasActive)
+        {
+            // 1 = ninguno, 2 = Mica (MAINWINDOW), 3 = Acrylic (TRANSIENTWINDOW)
+            int type = !active ? 1 : requested == GlueBackdrop.Tinted ? 2 : 3;
+            Win32.DwmSetWindowAttribute(Hwnd, Win32.DWMWA_SYSTEMBACKDROP_TYPE, &type, sizeof(int));
+            _backdropActive = active;
+            ApplyFrameMargins();
+        }
+        _backdropActive = active;
+        // Con el efecto activo el webview es transparente (se ve el material detras) y el fondo propio se pinta negro (cristal).
+        if (changed && _controller is ICoreWebView2Controller2 c2) c2.put_DefaultBackgroundColor(BackgroundColor);
+        if (changed) { Win32.InvalidateRect(Hwnd, 0, true); RepaintUnderWebView("cambio de fondo"); }
+        if (!_backdropNotified || changed || _backdropNotifiedRequested != requested)
+        {
+            _backdropNotified = true;
+            _backdropNotifiedRequested = requested;
+            _host.OnBackdropChanged(active);
+        }
+    }
+
     private GlueRgb Background => _host.Background.For(_platform.DarkMode);
 
     private COREWEBVIEW2_COLOR BackgroundColor
@@ -305,6 +474,7 @@ internal sealed class WinWindow : IPlatformWindow
         get
         {
             var c = Background;
+            if (_backdropActive) return new() { A = 0, R = c.R, G = c.G, B = c.B };
             return new() { A = 255, R = c.R, G = c.G, B = c.B };
         }
     }
@@ -313,7 +483,7 @@ internal sealed class WinWindow : IPlatformWindow
     private void EraseBackground(nint hdc)
     {
         var c = Background;
-        var brush = Win32.CreateSolidBrush(c.R | (uint)c.G << 8 | (uint)c.B << 16);
+        var brush = Win32.CreateSolidBrush(_backdropActive ? 0u : c.R | (uint)c.G << 8 | (uint)c.B << 16);
         Win32.GetClientRect(Hwnd, out var r);
         r.Top = BarPx; // la franja la pinta WinTitleBar (doble bufer, sin parpadeo)
         Win32.FillRect(hdc, ref r, brush);
@@ -328,6 +498,7 @@ internal sealed class WinWindow : IPlatformWindow
         Win32.SetWindowPos(_container, 0, 0, top, r.Width, r.Height, Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
         _controller?.put_Bounds(r);
         _bar?.Invalidate();
+        RepaintUnderWebView("tamano, DPI o barra");
     }
 
     // ------------------------------------------------------------- WebView2
@@ -354,6 +525,14 @@ internal sealed class WinWindow : IPlatformWindow
 
         if (controller is ICoreWebView2Controller2 c2) c2.put_DefaultBackgroundColor(BackgroundColor);
 
+        // Teclas antes que la pagina: Alt, F10 y Alt+letra para el menu de ventana (WinTitleBar.OnAccelerator).
+        controller.add_AcceleratorKeyPressed(new AcceleratorKeyHandler((kind, vk, lParam) =>
+        {
+            if (DebugLog.Enabled) DebugLog.Event($"AcceleratorKeyPressed kind={kind} vk=0x{vk:X} (barra: {_bar is not null})");
+            return _bar?.OnAccelerator(kind, vk, lParam) ?? false;
+        }));
+        if (DebugLog.Enabled) DebugLog.Event("AcceleratorKeyPressed registrado");
+
         var s = wv.get_Settings();
         s.put_AreDevToolsEnabled(_host.DevTools);
         s.put_AreDefaultContextMenusEnabled(_host.DevTools);
@@ -377,7 +556,7 @@ internal sealed class WinWindow : IPlatformWindow
         // Pagina inicial cargada (bien o con error): se muestra ya, sin esperar al plazo.
         wv.add_NavigationCompleted(new NavigationCompletedHandler(OnNavigationCompleted));
 
-        var scripts = Shim.For(((GlueWindow)_host).Id, "windows") + "\n;" + Shim.FadeIn(_host.Options.FadeInMs);
+        var scripts = Shim.For(((GlueWindow)_host).Id, "windows", _backdropActive ? _host.Backdrop.ToName() : "solid") + "\n;" + Shim.FadeIn(_host.Options.FadeInMs);
         foreach (var extra in _host.ExtraScripts) scripts += "\n;" + extra;
         wv.AddScriptToExecuteOnDocumentCreated(scripts, new AddScriptCompletedHandler());
 
@@ -586,6 +765,8 @@ internal sealed class WinWindow : IPlatformWindow
     private unsafe nint Handle(nint hwnd, uint msg, nint wParam, nint lParam)
     {
         if (_bar is not null && HandleTitleBar(hwnd, msg, wParam, lParam, out var barResult)) return barResult;
+        // El explorador se reinicio: la bandeja hay que ponerla otra vez (el aviso solo llega a ventanas normales).
+        if (msg == WinTray.TaskbarCreated) _platform.ServicesImpl.Refresh();
         switch (msg)
         {
             case Win32.WM_SIZE:
@@ -607,6 +788,8 @@ internal sealed class WinWindow : IPlatformWindow
                 Win32.SetWindowPos(hwnd, 0, r->Left, r->Top, r->Width, r->Height, Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE);
                 ApplyIcon();
                 _bar?.OnDpiChanged();
+                ResizeWebView(); // la franja cambia de alto con el DPI: el webview y lo que queda bajo la barra se recalculan y repintan
+                Win32.InvalidateRect(hwnd, 0, true);
                 return 0;
             }
 
@@ -636,6 +819,7 @@ internal sealed class WinWindow : IPlatformWindow
                 {
                     _platform.RefreshTheme();
                     ApplyTheme();
+                    UpdateBackdrop();
                 }
                 break;
 
@@ -653,7 +837,27 @@ internal sealed class WinWindow : IPlatformWindow
                 if (wParam == RevealTimerId) { Reveal(); return 0; }
                 break;
 
+            case 0x0138 /* WM_CTLCOLORSTATIC */ when _backdropActive && lParam == _container:
+                // Negro = cristal para DWM: asi el contenedor limpia lo que hubiera debajo del webview transparente (restos de la barra
+                // de antes de un cambio de DPI, de barra o de fondo) en lugar de dejarlo como estaba.
+                DebugLog.Count("contenedor-pinta");
+                return Win32.GetStockObject(4 /* BLACK_BRUSH */);
+
+            // Teclas con el foco en la propia ventana (por ejemplo tras pulsar en la barra): las mismas que llegan por WebView2 cuando
+            // el foco esta en la pagina. Alt suelto, F10 y Alt+letra activan el menu de ventana.
+            case Win32.WM_KEYDOWN or Win32.WM_KEYUP or Win32.WM_SYSKEYDOWN or Win32.WM_SYSKEYUP when _bar is not null:
+            {
+                int kind = msg switch { Win32.WM_KEYDOWN => 0, Win32.WM_KEYUP => 1, Win32.WM_SYSKEYDOWN => 2, _ => 3 };
+                if (_bar!.OnAccelerator(kind, (uint)wParam, (int)lParam, "ventana")) return 0;
+                break;
+            }
+
+            case Win32.WM_MENUSELECT:
+                WinMenu.OnMenuSelect(wParam, lParam);
+                break;
+
             case Win32.WM_ERASEBKGND:
+                DebugLog.Count("ventana-borra");
                 EraseBackground(wParam);
                 return 1;
 

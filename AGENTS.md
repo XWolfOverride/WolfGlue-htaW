@@ -64,10 +64,26 @@ Repositorio con dos piezas:
 - htaW `bundle`: ejecutable portable = htaw publicado + app al final (cola de 24 bytes `htaWapp\0`) y, en Windows, el
   icono de la app en los recursos del .exe. En un portable todos los argumentos son de la app.
 - htaW inserta `/_htaw/htaw.css` + `<style id="htaw-theme">` tras `<head>` en cada HTML (prefijo `/_htaw/` reservado).
+- htaW `recent.json`: las 10 ultimas apps abiertas con `htaw` (nombre, icono hasta 64 KB como `data:`, ruta, fecha), anotadas al abrir bien
+  una app (tambien con doble clic) y nunca en modo desarrollo (`recent-dev.json`) ni en un portable. `htaw --forget` acepta tambien un portable.
+- Notificaciones (`app.Native.Notifications`, `glue.notifications`, `htaw.notify` con permiso `notifications`): toasts de Windows por COM
+  sin WinRT proyectado (`WinToast.cs`, llamadas por tabla virtual, manejador del evento Activated como objeto COM nativo); AUMID
+  `htaW.<id>` registrado en `HKCUSoftwareClassesAppUserModelId`; como mucho 2 botones; mismo `id` sustituye; se retiran al terminar `Run`.
+- Bandeja (`app.Native.Tray`, `glue.tray`, `htaw.tray` con permiso `tray`): `Shell_NotifyIconW` en la ventana de mensajes; menu obligatorio, una
+  opcion `default` (clic izquierdo, una vez aunque sea doble clic); icono monocromo teñido segun `SystemUsesLightTheme` o `color: true`;
+  `tray.keepRunning` (manifiesto) oculta la ventana principal al cerrar solo mientras haya icono; `htaw.window.show/hide`.
+- Fondo del sistema (`GlueBackdrop`, `window.backdrop`, `htaw.window.setBackdrop`, `htaw.theme.backdrop`): `DWMWA_SYSTEMBACKDROP_TYPE` +
+  `DwmExtendFrameIntoClientArea(-1)` (compilacion 22621+, y efectos de transparencia activos); con el efecto activo el webview es
+  transparente (alfa 0), el fondo propio se pinta negro y `<html>` lleva `glue-backdrop-tinted|blurred`; evento `glue.backdrop`.
+  La barra de titulo propia no se repinta (se acepta el corte).
+  El repintado bajo el webview (con fondo activo) se aisla: solo al cambiar tamano, DPI, barra o fondo se quita `WS_CLIPCHILDREN` del contenedor,
+  se repinta en negro (`RepaintUnderWebView`) y se repone; el contenido de la pagina no lo provoca (registro `wolfglue-debug.log`, solo Debug, `DebugLog.cs`; DOC/COMPILACION-Y-PRUEBAS.md).
+- Canal de control de depuracion (solo Debug, `WOLFGLUE_DEBUG_CONTROL=1`, `WinDebugControl.cs`, cliente `tools/debug/wg.ps1`): `estado` (JSON de ventanas, barra,
+  menus, fondo), `eval` (JS en la pagina, con await), `captura` (PNG) y `pixel` (color de una zona): permite probar sin controlar el escritorio.
 
 ## Estado
 - Fase 1 (WolfGlue en Windows) completa: `src/WolfGlue` (API, bridge, contenido, servicios nativos `app.Native`,
-  backend Win32 + WebView2), `samples/Hola` (ejemplo) y `tests/WolfGlue.Tests` (xUnit, 130 pruebas, pasan).
+  backend Win32 + WebView2), `samples/Hola` (ejemplo) y `tests/WolfGlue.Tests` (xUnit, 163 pruebas, pasan).
 - Probado a mano en Windows 11, con JIT y con AOT (un `.exe` de ~3,9 MB): llamadas sincronas/asincronas, errores con
   codigo, eventos desde otro hilo, varias ventanas, avisos entre ventanas, dialogo modal con resultado, cierre limpio,
   dialogos de abrir (multiple), guardar y carpeta, mensaje con botones, portapapeles, pantallas, tema y mostrar en
@@ -79,7 +95,7 @@ Repositorio con dos piezas:
 - Limitacion conocida: el mensaje nativo (`MessageBoxW`) sale en modo claro aunque el sistema este en oscuro.
 - Fase 2 (htaW en Windows) casi completa: `src/htaW` (paquete y manifiesto, permisos y confianza, API `htaw.*`,
   CSS nativo, linea de comandos), `samples/htaw` (`hola.htaw`, `markdown.htaw` y las carpetas `notas` y `barra`) y `tests/htaW.Tests`
-  (127 pruebas, pasan). AOT: un `htaw.exe` de ~9,3 MB, sin avisos.
+  (139 pruebas, pasan). AOT: un `htaw.exe` de ~9,3 MB, sin avisos.
 - Probado a mano (JIT y AOT): HTML suelto con CSS nativo y acento del sistema, `exec` permitido, permiso denegado,
   dialogo modal con resultado, zip con confirmacion por Mark of the Web, guardar con `fs` y `dialog`, ajustes
   persistentes, segunda apertura sin preguntar, panel sin argumentos (estado de la asociacion, olvidar permisos, ayuda), `--version` y `pack` con salida redirigida.
@@ -87,8 +103,19 @@ Repositorio con dos piezas:
   ella, busqueda, menus, conmutador y cambio en caliente (`samples/htaw/barra`).
 - Probado a mano (AOT): ejecutable portable con argumentos e icono propio (barra de titulo, barra de tareas y el del .exe).
 - Hecho y probado a mano: instancia unica (`singleInstance`, mutex + tuberia con nombre, evento `secondInstance`) y
-  `htaw.window.onClosing` (confirmacion de cierre por la pagina). Falta de la fase 2: ventana de recientes. Probado a mano: `--register`, abrir una carpeta en modo
-  desarrollo y su lista de recientes. Sin probar: `fs.watch`, `spawn`, `http.fetch`; en el panel, empaquetar y abrir.
+  `htaw.window.onClosing` (confirmacion de cierre por la pagina). Probado a mano: `--register`, abrir una carpeta en modo
+  desarrollo y su lista de recientes. `fs.watch`, `spawn` y `http.fetch`: prueba automatica de humo correcta (eventos create/change/rename/delete, ping con stdout y exit, exec permitido y rechazado, GET/POST con JSON); ejemplo `samples/htaw/pruebas` probado a mano (las tildes de ping se arreglan con `encoding: "oem"`).
+- Ciclo de vida (DOC/CICLO-DE-VIDA.md): por defecto `GlueQuitMode.MainWindowClosed` (la primera ventana es la principal; al cerrarla se
+  cierra todo, `lifecycle: "last"` en htaW para vivir mientras haya ventanas). Ventana Acerca de: `GlueApp.ShowAboutBox()`,
+  `GlueWindowOptions.IsAbout`, `AboutPage` (htaW `about`), generica con icono, nombre, version, autor y pie «Desarrollado con»
+  (`GlueAbout.cs`); `htaw.app.showAboutBox()`; papel `about` en opciones de menu y botones de barra. Autor en el manifiesto.
+  Linux: hamburguesa en todos los casos, Xfce con barra clasica solo si la implementacion dual sale barata (DOC/MENUS-LINUX.md).
+- Versiones en DOC/HOJA-DE-RUTA.md. **1.1 (Windows)**: hechas y probadas a mano bandeja, notificaciones, apps recientes (y revision del modo
+  portable) y fondo `backdrop` (ejemplos `samples/htaw/avisos`, `bandeja` y `fondo`); hechos menus contextuales (`htaw.menu.popup`, `app.Native.Menus`, sin permiso; menus emergentes en oscuro via uxtheme ordinales 135/136; DOC/MENUS.md; ejemplo `samples/htaw/menus`, probados a mano). Menu de ventana (`window.menu`, `htaw.window.menu`): render propio en `WinTitleBar` (no HMENU: no sigue el oscuro), fila fina bajo la barra en sin barra/`title`/`compact`, fila superior en `labels` (menus a la izquierda, icono y titulo centrados); boton «···» con los menus que no caben; desplegable con `TrackPopupMenu`; probado el uso basico (`samples/htaw/acerca`); probado en todos los modos de barra y con fondo. Teclado (Alt/F10, Alt+letra, flechas) por `AcceleratorKeyPressed`, mensajes de la ventana y reenvio desde la pagina (`glue.window.menuKey`/`menuState`) y cambio de menu con raton/flechas por gancho `WH_MSGFILTER` (`WinMenu.IBarHook`): implementado y probado a mano (Alt, F10, Alt+letra, flechas y raton). Linux: punto abierto en DOC/MENUS-LINUX.md. Resuelto: con fondo activo y barra
+  propia el cristal deja libre la franja superior (`ApplyFrameMargins`) y DWM ya no duplica los botones de ventana. **1.2**: ventanas sin marco
+  y transparentes (avatar/widget, permiso `overlay`, incompatibles con la barra de titulo propia; DOC/VENTANAS-SIN-MARCO.md) y mensajes propios en
+  todos los SO (DOC/MENSAJES.md; hasta entonces, mensaje nativo). Wayland es una excepcion aceptada: `alwaysOnTop` y `setPosition` se ignoran
+  alli (mejor esfuerzo, con `Capabilities`), el arrastre por clic si funciona.
 - Evaluado, sin implementar (DOC/HTAW-INTEGRACION.md): icono de cada .htaw en el explorador (descartado por ahora) y
   portables en Linux (.desktop por usuario) y macOS (bundle .app con .icns).
 - macOS y Linux: sin empezar (sin `build.sh` hasta entonces).

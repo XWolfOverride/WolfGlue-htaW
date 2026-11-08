@@ -1,0 +1,33 @@
+{
+  "id": "wolfglue.ejemplo.menuventana",
+  "name": "Menu de ventana",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": {
+    "width": 700, "height": 420, "backdrop": "tinted", "minWidth": 420, "minHeight": 300,
+    "menu": [
+      { "text": "&Archivo", "items": [
+        { "id": "nuevo", "text": "&Nuevo", "shortcut": "Ctrl+N" },
+        { "id": "abrir", "text": "&Abrir...", "shortcut": "Ctrl+O" },
+        { "type": "separator" },
+        { "id": "salir", "text": "&Salir" }
+      ] },
+      { "text": "&Editar", "items": [
+        { "id": "copiar", "text": "&Copiar", "shortcut": "Ctrl+C" },
+        { "id": "pegar", "text": "&Pegar", "shortcut": "Ctrl+V", "enabled": false },
+        { "text": "Mas", "items": [ { "id": "otro", "text": "Segundo nivel" } ] }
+      ] },
+      { "text": "&Ver", "items": [
+        { "id": "negrita", "text": "Negrita", "checked": true },
+        { "id": "ayuda", "text": "Con un nombre de menu bastante largo" }
+      ] },
+      { "text": "&Insertar", "items": [ { "id": "ins-tabla", "text": "&Tabla" }, { "id": "ins-img", "text": "&Imagen" } ] },
+      { "text": "&Formato", "items": [ { "id": "fmt-negrita", "text": "&Negrita", "shortcut": "Ctrl+B" }, { "id": "fmt-cursiva", "text": "&Cursiva", "shortcut": "Ctrl+I" } ] },
+      { "text": "&Herramientas", "items": [ { "id": "h-ortografia", "text": "&Ortografia" }, { "id": "h-opciones", "text": "O&pciones..." } ] },
+      { "text": "&Datos", "items": [ { "id": "d-ordenar", "text": "&Ordenar" }, { "id": "d-filtrar", "text": "&Filtrar" } ] },
+      { "text": "Ve&ntana", "items": [ { "id": "w-nueva", "text": "&Nueva ventana" }, { "id": "w-cascada", "text": "&Cascada" } ] },
+      { "text": "&Complementos", "items": [ { "id": "c-gestionar", "text": "&Gestionar" } ] },
+      { "text": "A&yuda", "items": [ { "id": "acerca", "text": "&Acerca de..." } ] }
+    ]
+  }
+}

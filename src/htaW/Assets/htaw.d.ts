@@ -15,6 +15,49 @@ interface HtawFileDialogOptions {
   defaultExtension?: string;
   multiple?: boolean;
 }
+interface HtawMenuItem {
+  type?: "separator";
+  /** Lo que devuelve popup al elegir la opcion (no hace falta en un submenu) */
+  id?: string;
+  text?: string;
+  enabled?: boolean;
+  checked?: boolean;
+  /** Atajo que se muestra a la derecha (solo texto; la pagina atiende las teclas) */
+  shortcut?: string;
+  /** Submenu (hasta 4 niveles) */
+  items?: HtawMenuItem[];
+}
+
+interface HtawTrayItem {
+  type?: "separator";
+  id?: string;
+  text?: string;
+  enabled?: boolean;
+  checked?: boolean;
+  /** La opcion del clic izquierdo en el icono (como mucho una) */
+  default?: boolean;
+}
+
+interface HtawTray {
+  /** Ruta de la app o URL data:; por defecto, el icono de la app */
+  icon?: string;
+  /** false (por defecto): el icono se usa como silueta y se tine segun la barra de tareas */
+  color?: boolean;
+  tooltip?: string;
+  /** Obligatorio */
+  menu: HtawTrayItem[];
+}
+
+interface HtawNotification {
+  /** Si se repite, sustituye a la notificacion anterior con ese id */
+  id?: string;
+  title: string;
+  body?: string;
+  silent?: boolean;
+  /** Como mucho 2 */
+  buttons?: { id: string; text: string }[];
+}
+
 interface HtawMessageOptions {
   title?: string;
   kind?: "info" | "warning" | "error" | "question";
@@ -45,8 +88,13 @@ interface HtawHttpResponse {
   status: number; statusText: string; ok: boolean;
   headers: Record<string, string>; body: string; json(): any;
 }
+/** Fondo del sistema: solido, teñido por el escritorio (Mica) o con lo de detras difuminado (Acrylic) */
+type HtawBackdrop = "solid" | "tinted" | "blurred";
+
 interface HtawTheme {
   dark: boolean; accent: string; fontFamily: string; fontSize: number; highContrast: boolean; os: string;
+  /** Fondo del sistema activo ahora mismo en esta ventana ("solid" si no hay efecto o el sistema no puede) */
+  backdrop: HtawBackdrop;
   on(type: "change", fn: (theme: HtawTheme) => void): () => void;
 }
 
@@ -87,9 +135,11 @@ interface HtawTitleBar {
 interface HtawTitleBarEvent { button: string | null; value: string | null; }
 declare const htaw: {
   app: {
-    id: string; name: string; version: string | null; args: readonly string[];
+    id: string; name: string; version: string | null; author: string | null; args: readonly string[];
     dir: string | null; file: string; dev: boolean;
     quit(code?: number): Promise<void>;
+    /** Abre la ventana "Acerca de": la del manifiesto (about) o una generica con nombre, version, autor e icono */
+    showAboutBox(): void;
     relaunch(): Promise<void>;
     /** Solo con singleInstance: la app se ha vuelto a abrir (sus argumentos y su carpeta actual) */
     on(type: "secondInstance", fn: (e: { args: string[]; cwd: string }) => void): () => void;
@@ -100,6 +150,17 @@ declare const htaw: {
     setSize(width: number, height: number): Promise<void>;
     center(): Promise<void>; minimize(): Promise<void>; maximize(): Promise<void>; restore(): Promise<void>;
     close(result?: any): Promise<void>;
+    /** Cambia el fondo del sistema de esta ventana (no hace nada visible si el sistema no lo admite) */
+    setBackdrop(backdrop: HtawBackdrop): Promise<void>;
+    /** Menu de ventana (Archivo, Editar...): cada entrada de primer nivel es un menu con sus opciones */
+    menu: {
+      set(menus: { text: string; items: HtawMenuItem[] }[] | null): Promise<void>;
+      on(type: "click", fn: (id: string) => void): () => void;
+    };
+    /** Muestra y pone delante la ventana si estaba oculta o minimizada */
+    show(): Promise<void>;
+    /** Oculta la ventana sin cerrarla */
+    hide(): Promise<void>;
     /** Antes de cerrar por el usuario o el sistema: devolver false (o una promesa con false) mantiene la ventana abierta. Devuelve la funcion para quitarla. */
     onClosing(fn: () => boolean | void | Promise<boolean | void>): () => void;
     titlebar: {
@@ -110,7 +171,7 @@ declare const htaw: {
       /** click: id del elemento o de la opcion de su menu (e.button = el que abrio el menu). input/submit: e.value = texto de la busqueda */
       on(type: "click" | "input" | "submit", fn: (id: string, e: HtawTitleBarEvent) => void): () => void;
     };
-    open(page: string, options?: { title?: string; width?: number; height?: number; modal?: boolean; resizable?: boolean; titlebar?: HtawTitleBar | false }):
+    open(page: string, options?: { title?: string; width?: number; height?: number; modal?: boolean; resizable?: boolean; titlebar?: HtawTitleBar | false; backdrop?: HtawBackdrop; menu?: { text: string; items: HtawMenuItem[] }[] }):
       Promise<{ id: string | null; result: Promise<any> | null }>;
   };
   dialog: {
@@ -152,6 +213,27 @@ declare const htaw: {
     readImage(): Promise<Blob | null>;
     /** Blob/File, bytes, <img>, <canvas>, ImageBitmap o URL data:; se convierte a PNG */
     writeImage(image: Blob | ArrayBuffer | Uint8Array | HTMLImageElement | HTMLCanvasElement | ImageBitmap | string): Promise<void>; writeText(text: string): Promise<void> };
+  /** Menus contextuales nativos (sin permiso). */
+  menu: {
+    /** Devuelve el id de la opcion elegida, o null si se cierra sin elegir. x, y en pixeles CSS (clientX/clientY); sin ellos, junto al raton */
+    popup(items: HtawMenuItem[], position?: { x: number; y: number }): Promise<string | null>;
+  };
+  /** Icono junto al reloj (permiso `tray`). */
+  tray: {
+    set(tray: HtawTray): Promise<void>;
+    remove(): Promise<void>;
+    update(id: string, changes: { text?: string; enabled?: boolean; checked?: boolean }): Promise<void>;
+    available(): Promise<boolean>;
+    on(type: "click", fn: (id: string) => void): () => void;
+  };
+  /** Notificaciones del sistema (permiso `notifications`). Devuelve el id; con el mismo id se sustituye la anterior. */
+  notify: {
+    (n: HtawNotification): Promise<string>;
+    close(id: string): Promise<void>;
+    permission(): Promise<"granted" | "denied">;
+    on(type: "click", fn: (id: string) => void): () => void;
+    on(type: "button", fn: (id: string, buttonId: string) => void): () => void;
+  };
   env: { get(name: string): Promise<string | null>; home?: string; temp?: string; documents?: string; os?: string; arch?: string };
   theme: HtawTheme;
   permissions: readonly string[];

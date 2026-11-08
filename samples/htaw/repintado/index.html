@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Prueba de repintado</title>
+<style>
+  @keyframes giro { to { transform: rotate(360deg); } }
+  @keyframes pulso { 0%, 100% { opacity: .2; } 50% { opacity: 1; } }
+  #cuadro { width: 56px; height: 56px; background: var(--htaw-accent); border-radius: 8px; animation: giro 2s linear infinite; }
+  #punto { width: 24px; height: 24px; border-radius: 50%; background: var(--htaw-accent); animation: pulso 1s ease-in-out infinite; }
+  .parado #cuadro, .parado #punto { animation: none; }
+  canvas { border: 1px solid var(--htaw-border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="layout-fill">
+<main class="column" style="gap:12px">
+  <h1>Prueba de repintado</h1>
+  <p class="muted">Ejecuta con <code>run.cmd</code> (compilacion Debug): escribe <code>wolfglue-debug.log</code> en la carpeta desde la que lo lances. Con el fondo activo y animaciones CSS y de canvas
+    en marcha, el contador <code>contenedor-pinta</code> del registro debe quedarse en 0 por segundo: el contenido de la pagina no debe
+    repintar el contenedor. Solo deben salir lineas EVENTO al cambiar el tamano, el DPI, la barra o el fondo.</p>
+  <div class="row" style="align-items:center;gap:16px">
+    <div id="cuadro"></div><div id="punto"></div><canvas id="c" width="220" height="56"></canvas>
+  </div>
+  <div class="row">
+    <button id="anim">Parar animaciones</button>
+    <button id="barra">Cambiar barra</button>
+    <button id="fondo">Cambiar fondo</button>
+  </div>
+  <pre>run.cmd --dev samples\htaw\repintado
+(el registro se crea solo en Debug; en Release no existe)</pre>
+</main>
+</div>
+<script>
+const cv = document.getElementById("c").getContext("2d");
+let t = 0, activo = true;
+(function frame() {
+  if (activo) {
+    t += 0.05;
+    cv.clearRect(0, 0, 220, 56);
+    cv.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--htaw-accent") || "#0067c0";
+    for (let i = 0; i < 8; i++) cv.fillRect(10 + i * 26, 28 + Math.sin(t + i) * 18 - 6, 14, 12);
+  }
+  requestAnimationFrame(frame);
+})();
+document.getElementById("anim").onclick = (e) => {
+  activo = !activo;
+  document.body.classList.toggle("parado", !activo);
+  e.target.textContent = activo ? "Parar animaciones" : "Reanudar animaciones";
+};
+const items = [{ type: "button", id: "i1", icon: "open", text: "Abrir" }, { type: "button", id: "i2", icon: "save", text: "Guardar" }];
+const modos = [null, "title", "compact", "labels"]; let mi = 0;
+document.getElementById("barra").onclick = () => { mi = (mi + 1) % modos.length; htaw.window.titlebar.set(modos[mi] ? { mode: modos[mi], items } : null); };
+const fondos = ["solid", "tinted", "blurred"]; let fi = 1;
+document.getElementById("fondo").onclick = () => { fi = (fi + 1) % fondos.length; htaw.window.setBackdrop(fondos[fi]); };
+htaw.window.menu.on("click", (id) => { if (id === "salir") htaw.app.quit(); });
+</script>
+</body>
+</html>

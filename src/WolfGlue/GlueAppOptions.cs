@@ -16,7 +16,7 @@ public sealed class GlueAppOptions
     public string Host { get; init; } = "app.local";
 
     /// <summary>Cuando termina la aplicacion.</summary>
-    public GlueQuitMode QuitMode { get; init; } = GlueQuitMode.LastWindowClosed;
+    public GlueQuitMode QuitMode { get; init; } = GlueQuitMode.MainWindowClosed;
 
     /// <summary>Activa las DevTools (F12) y el menu contextual del motor.</summary>
     public bool DevTools { get; init; }
@@ -66,6 +66,49 @@ public sealed class GlueAppOptions
     /// <see cref="GlueApp.OpenExternal"/> no se ve afectado.
     /// </summary>
     public bool ExternalLinksRequireUserAction { get; init; } = true;
+
+    /// <summary>
+    /// Identificador de la app en Windows (AppUserModelID) para sus notificaciones y su registro en el sistema; por defecto
+    /// <see cref="AppId"/>. La app que lo fije como identificador del proceso debe usar el mismo valor.
+    /// </summary>
+    public string? AppUserModelId { get; init; }
+
+    /// <summary>Nombre visible de la app en las notificaciones del sistema; por defecto <see cref="AppId"/>.</summary>
+    public string? AppName { get; init; }
+
+    /// <summary>Autor de la app (ventana «Acerca de»).</summary>
+    public string? Author { get; init; }
+
+    /// <summary>Version de la app (ventana «Acerca de»).</summary>
+    public string? Version { get; init; }
+
+    /// <summary>
+    /// Pagina propia de «Acerca de» (ruta en el contenido de la app). Si se define, se usa en lugar de la ventana generica y
+    /// no lleva el pie «Desarrollado con».
+    /// </summary>
+    public string? AboutPage { get; init; }
+
+    /// <summary>Tamano de la ventana «Acerca de» propia (unidades logicas).</summary>
+    public int AboutWidth { get; init; } = 420;
+    public int AboutHeight { get; init; } = 320;
+
+    /// <summary>Nombre que sale en el pie de la ventana generica («Desarrollado con …»).</summary>
+    public string PoweredBy { get; init; } = "WolfGlue";
+
+    /// <summary>Icono de la ventana «Acerca de» generica si la app no tiene <see cref="Icon"/>.</summary>
+    public byte[]? AboutIcon { get; init; }
+
+    /// <summary>Fondo del sistema por defecto de todas las ventanas (la ventana lo puede cambiar).</summary>
+    public GlueBackdrop Backdrop { get; init; } = GlueBackdrop.Solid;
+
+    /// <summary>
+    /// Fondo que declara el HTML de la pagina inicial (por ejemplo, un bloque <c>htaw+json</c>); solo cuenta si la ventana no
+    /// fija el suyo. Devuelve null si la pagina no dice nada.
+    /// </summary>
+    public Func<string, GlueBackdrop?>? PageBackdrop { get; init; }
+
+    /// <summary>Menu de ventana que declara el HTML de la pagina inicial; solo cuenta si la ventana no fija el suyo.</summary>
+    public Func<string, List<Native.GlueMenuItem>?>? PageMenu { get; init; }
 
     /// <summary>
     /// Lee la barra de titulo que declara una pagina (su HTML) para las ventanas que no la reciben por opciones. Se llama al

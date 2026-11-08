@@ -1,0 +1,7 @@
+{
+  "id": "wolfglue.ejemplo.fondo",
+  "name": "Fondo del sistema",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": { "width": 640, "height": 420, "minWidth": 420, "minHeight": 300, "backdrop": "tinted" }
+}

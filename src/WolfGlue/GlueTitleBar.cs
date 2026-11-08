@@ -72,6 +72,14 @@ public sealed class GlueTitleBar
         switch (it.Type)
         {
             case GlueTitleBarItem.Button:
+                if (it.Role is not null)
+                {
+                    if (it.Role != "about") throw new FormatException($"{p}: papel desconocido: {it.Role}.");
+                    // Boton estandar de «Acerca de»: icono de ayuda, texto y id por defecto; abre la ventana Acerca de de la app.
+                    it.Icon ??= "help";
+                    it.Text ??= Strings.AboutShort;
+                    it.Id ??= WolfGlue.Native.GlueMenuItem.AboutId;
+                }
                 if (string.IsNullOrEmpty(it.Icon)) throw new FormatException($"{p}: un boton necesita icon.");
                 if (string.IsNullOrEmpty(it.Text)) throw new FormatException($"{p}: un boton necesita text (se ve bajo el icono o como ayuda).");
                 if (it.Split && it.Menu is not { Count: > 0 }) throw new FormatException($"{p}: split necesita menu.");
@@ -150,6 +158,9 @@ public sealed class GlueTitleBarItem
     /// final), <c>image</c> (imagen decorativa) o <c>space</c> (espacio flexible: empuja lo siguiente a la derecha).
     /// </summary>
     public string Type { get; set; } = Button;
+
+    /// <summary>Papel estandar del boton: <c>about</c> abre la ventana «Acerca de» de la app (icono, texto e id por defecto).</summary>
+    public string? Role { get; set; }
 
     /// <summary>Identificador: llega en los eventos y sirve para <c>update</c>.</summary>
     public string? Id { get; set; }

@@ -18,6 +18,13 @@ en [AGENTS.md](../AGENTS.md).
 | [ARQUITECTURA.md](ARQUITECTURA.md) | Estructura del repo, capas, modelo de app y ventanas, hilos |
 | [PLATAFORMAS.md](PLATAFORMAS.md) | Detalle de Windows, Linux y macOS: APIs, DPI, problemas conocidos |
 | [BARRA-DE-TITULO.md](BARRA-DE-TITULO.md) | Barra de título con elementos propios: modelo común, implementación en Windows, previsto en macOS/Linux |
+| [MENUS.md](MENUS.md) | Menús nativos: modelo común, contextual (hecho en Windows) y menú de ventana (diseño abierto) |
+| [CICLO-DE-VIDA.md](CICLO-DE-VIDA.md) | Ventana principal, modos de cierre de la app, ventana «Acerca de» y papel `about` |
+| [MENUS-LINUX.md](MENUS-LINUX.md) | Menú de ventana en Linux: estudio y opciones (punto abierto) |
+| [FONDO-DE-VENTANA.md](FONDO-DE-VENTANA.md) | Diseño: fondo del sistema (`backdrop`: Mica/Acrylic, NSVisualEffectView) |
+| [BANDEJA-Y-NOTIFICACIONES.md](BANDEJA-Y-NOTIFICACIONES.md) | Diseño: icono en la bandeja y notificaciones con modelo común |
+| [MENSAJES.md](MENSAJES.md) | Evaluación y diseño: mensajes propios en todos los SO (versión 1.2) |
+| [VENTANAS-SIN-MARCO.md](VENTANAS-SIN-MARCO.md) | Diseño: ventanas sin marco y transparentes al escritorio (WolfGlue y htaW con permiso `overlay`) |
 | [BRIDGE.md](BRIDGE.md) | Comunicación web ↔ C#: protocolo, shim JS, host propio, seguridad |
 | [CONSUMO.md](CONSUMO.md) | Cómo usar WolfGlue como `ProjectReference` desde otro proyecto |
 | [manual/](manual/README.md) | **Manual de htaW**: uso, y guía completa para desarrollar apps (manifiesto, API, permisos, CSS, ventanas, distribución, recetas) |

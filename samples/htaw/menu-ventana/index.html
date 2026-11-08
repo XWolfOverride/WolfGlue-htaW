@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Menu de ventana</title>
+</head>
+<body>
+<div class="layout-fill">
+<main class="column" style="gap:12px">
+  <h1>Menu de ventana</h1>
+  <p class="muted">Render propio dentro de la barra: title y compact = fila fina bajo la barra; labels = fila superior (menu a la izquierda, icono y titulo centrados) y los iconos debajo; sin barra propia = como title. Estrecha la ventana para ver el boton de desbordamiento (hay muchos menus a proposito) y combina con el fondo. Doble clic en el icono de la ventana: la cierra.</p>
+  <div class="row">
+    <button id="bar">Barra: ninguna</button>
+    <button id="fondo">Fondo: tinted</button>
+    <button id="quitar">Quitar el menu</button>
+    <button id="poner">Poner el menu</button>
+  </div>
+  <pre id="log" style="min-height:120px;overflow:auto"></pre>
+  <p>ahora</p>
+  <p>creo</p>
+  <p>contenido</p>
+  <p>para</p>
+  <p>forzar</p>
+  <p>un</p>
+  <p>scroll</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+  <p>...</p>
+</main>
+</div>
+<script>
+const log = (t) => { const l = document.getElementById("log"); l.textContent = new Date().toLocaleTimeString() + "  " + t + "\n" + l.textContent; };
+const items = [
+  { type: "button", id: "i1", icon: "open", text: "Abrir" },
+  { type: "button", id: "i2", icon: "save", text: "Guardar" },
+  { type: "button", id: "i3", icon: "copy", text: "Copiar" },
+];
+const modes = [null, "title", "compact", "labels"];
+let mi = 0;
+const menu = [
+  { text: "&Archivo", items: [{ id: "nuevo", text: "&Nuevo", shortcut: "Ctrl+N" }, { type: "separator" }, { id: "salir", text: "&Salir" }] },
+  { text: "&Editar", items: [{ id: "copiar", text: "&Copiar", shortcut: "Ctrl+C" }] },
+];
+document.getElementById("bar").onclick = async (e) => {
+  mi = (mi + 1) % modes.length;
+  const m = modes[mi];
+  await htaw.window.titlebar.set(m ? { mode: m, items } : null);
+  e.target.textContent = "Barra: " + (m ?? "ninguna");
+};
+const fondos = ["solid", "tinted", "blurred"];
+let fi = 1;
+document.getElementById("fondo").onclick = async (e) => {
+  fi = (fi + 1) % fondos.length;
+  await htaw.window.setBackdrop(fondos[fi]);
+  e.target.textContent = "Fondo: " + fondos[fi];
+};
+document.getElementById("quitar").onclick = () => htaw.window.menu.set(null);
+document.getElementById("poner").onclick = () => htaw.window.menu.set(menu);
+htaw.window.menu.on("click", (id) => { log("menu: " + id); if (id === "salir") htaw.app.quit(); });
+htaw.window.titlebar.on("click", (id) => log("barra: " + id));
+</script>
+</body>
+</html>

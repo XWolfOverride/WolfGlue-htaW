@@ -10,17 +10,40 @@ public sealed class HtawManifest
     public string? Id { get; set; }
     public string? Name { get; set; }
     public string? Version { get; set; }
+    /// <summary>Autor (ventana «Acerca de» y <c>htaw.app.author</c>).</summary>
+    public string? Author { get; set; }
+    /// <summary>
+    /// Pagina propia de «Acerca de»: una ruta (<c>"acerca.html"</c>) o <c>{ "page", "width", "height" }</c>. Sin ella, una ventana
+    /// generica con nombre, version, autor e icono.
+    /// </summary>
+    public JsonElement? About { get; set; }
+    /// <summary><c>main</c> (por defecto): al cerrar la ventana principal se cierra la app y el resto de ventanas; <c>last</c>: la app vive mientras haya alguna ventana.</summary>
+    public string Lifecycle { get; set; } = "main";
     public string? Entry { get; set; }
     public string? Icon { get; set; }
     public string? Lang { get; set; }
     public HtawWindow Window { get; set; } = new();
     public bool SingleInstance { get; set; }
+    /// <summary>Bandeja del sistema (permiso <c>tray</c>).</summary>
+    public HtawTray Tray { get; set; } = new();
     /// <summary>native | none</summary>
     public string Theme { get; set; } = "native";
     /// <summary>Cadenas (<c>"fs"</c>) u objetos (<c>{"shell.exec": [...]}</c>).</summary>
     public JsonElement[] Permissions { get; set; } = [];
 
     /// <summary>Campos del JSON que no se reconocen (se avisan, no son error).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Unknown { get; set; }
+}
+
+public sealed class HtawTray
+{
+    /// <summary>
+    /// Cerrar la ventana principal la oculta (la app sigue viva) mientras haya un icono en la bandeja. Sin icono, se cierra
+    /// como siempre: una app oculta y sin icono no se podria volver a ver.
+    /// </summary>
+    public bool KeepRunning { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
 }
@@ -44,12 +67,22 @@ public sealed class HtawWindow
     /// <summary>Duracion del fundido de entrada en ms (0 = sin fundido; por defecto 150).</summary>
     public int FadeIn { get; set; } = 150;
 
+    /// <summary>Fondo del sistema: <c>solid</c> (por defecto), <c>tinted</c> (Mica) o <c>blurred</c> (Acrylic).</summary>
+    public string? Backdrop { get; set; }
+
     /// <summary>Barra de titulo propia (mismo esquema que <see cref="WolfGlue.GlueTitleBar"/>, ver el manual).</summary>
     public JsonElement? Titlebar { get; set; }
 
     /// <summary><see cref="Titlebar"/> ya leida y validada.</summary>
     [JsonIgnore]
     public WolfGlue.GlueTitleBar? ParsedTitleBar { get; set; }
+
+    /// <summary>Menu de ventana (Archivo, Editar...): lista de menus con sus opciones (ver el manual).</summary>
+    public JsonElement? Menu { get; set; }
+
+    /// <summary><see cref="Menu"/> ya leido y validado.</summary>
+    [JsonIgnore]
+    public List<WolfGlue.Native.GlueMenuItem>? ParsedMenu { get; set; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Unknown { get; set; }
@@ -115,15 +148,29 @@ public static partial class ManifestReader
         if (w.Background is not null && !WolfGlue.GlueBackground.TryParse(w.Background, out _))
             throw new HtawFormatException(Strings.ManifestBadValue("window.background", w.Background));
         if (w.FadeIn is < 0 or > 2000) throw new HtawFormatException(Strings.ManifestBadValue("window.fadeIn", w.FadeIn.ToString()));
+        if (w.Backdrop is not null && !WolfGlue.GlueBackdropExtensions.TryParse(w.Backdrop, out _))
+            throw new HtawFormatException(Strings.ManifestBadValue("window.backdrop", w.Backdrop));
         if (w.Titlebar is { ValueKind: not JsonValueKind.Null } tb)
         {
             try { w.ParsedTitleBar = WolfGlue.GlueTitleBar.Parse(tb.GetRawText()); }
             catch (FormatException e) { throw new HtawFormatException(Strings.ManifestBadValue("window.titlebar", e.Message)); }
         }
+        if (w.Menu is { ValueKind: not JsonValueKind.Null } mn)
+        {
+            try { w.ParsedMenu = WolfGlue.Native.GlueMenuItem.ParseBar(mn.GetRawText()); }
+            catch (FormatException e) { throw new HtawFormatException(Strings.ManifestBadValue("window.menu", e.Message)); }
+        }
         if (m.Icon is { Length: > 0 } icon)
         {
             if (IconSource.TryDataUrl(icon, out var data) ? data is null : Content.ContentPathCheck(icon) is null)
                 throw new HtawFormatException(Strings.ManifestBadValue("icon", icon.Length > 60 ? icon[..60] + "…" : icon));
+        }
+        if (m.Lifecycle is not ("main" or "last")) throw new HtawFormatException(Strings.ManifestBadValue("lifecycle", m.Lifecycle));
+        if (m.About is { ValueKind: not JsonValueKind.Null } ab)
+        {
+            var (page, _, _) = Content.ReadAbout(ab);
+            if (page is null || Content.ContentPathCheck(page) is null)
+                throw new HtawFormatException(Strings.ManifestBadValue("about", ab.ToString()));
         }
         if (m.Entry is not null && Content.ContentPathCheck(m.Entry) is null)
             throw new HtawFormatException(Strings.ManifestBadValue("entry", m.Entry));
@@ -136,6 +183,17 @@ public static partial class ManifestReader
 
 internal static class Content
 {
+    /// <summary>Lee <c>about</c>: pagina, ancho y alto (null si no se indican).</summary>
+    internal static (string? Page, int? Width, int? Height) ReadAbout(JsonElement ab)
+    {
+        if (ab.ValueKind == JsonValueKind.String) return (ab.GetString(), null, null);
+        if (ab.ValueKind != JsonValueKind.Object) return (null, null, null);
+        string? page = ab.TryGetProperty("page", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+        int? w = ab.TryGetProperty("width", out var wi) && wi.TryGetInt32(out var wv) ? wv : null;
+        int? h = ab.TryGetProperty("height", out var he) && he.TryGetInt32(out var hv) ? hv : null;
+        return (page, w, h);
+    }
+
     /// <summary>Ruta relativa valida (sin salir de la raiz) o null.</summary>
     internal static string? ContentPathCheck(string path)
     {

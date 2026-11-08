@@ -45,7 +45,8 @@ Opening `htaw.exe` without any file shows the panel, with these sections:
 
 | Section | What it is for |
 |---|---|
-| Open an application | Choose a `.htaw` and open it, optionally with arguments for the app. The panel closes when it opens. |
+| Open an application | Choose a `.htaw` and open it, optionally with arguments for the app. The panel closes when it opens.  Below it, the **last 10 applications opened** with htaW (also by double click or from the command line; not development-mode ones nor portable executables), with name, icon and path: *Open* and *Remove*; those that no longer exist are marked. |
+
 | Development mode | Open a folder or a file in development mode, and the **Recent** list (Open / Remove). See [Development](08-development-and-distribution.md). |
 | Create a .htaw | Pack a development folder into a single `.htaw`. |
 | Create a portable executable | Turn an app (folder, `.htaw` or HTML) into an `.exe` that contains htaW. |
@@ -65,10 +66,11 @@ htaW stores in `%LOCALAPPDATA%\htaW` (Windows):
 
 - `trust.json`: the applications you gave permission to;
 - `apps\<id>\settings.json`: the settings of each application;
+- `recent.json`: the last applications opened (name, icon, path and date);
 - `recent-dev.json`: the recent development folders;
 - `WebView2\`: the data of the built-in browser (web storage of each app, cache).
 
-To forget an app's permissions: panel → *Remembered permissions* → *Forget*, or `htaw --forget <file|id>`.
+To forget an app's permissions: panel → *Remembered permissions* → *Forget*, or `htaw --forget <file|id>` (the file can be a `.htaw` or a portable executable).
 
 ## Command line
 

@@ -15,7 +15,11 @@ htaw --version / --help
 ```
 
 - Sin argumentos (doble clic sobre `htaw.exe`): **panel de htaW** con las mismas acciones (ver abajo).
-  *(La ventana de apps recientes que se pensó en el diseño queda para más adelante; encajaría en el panel.)*
+  *(Versión 1.1, implementado: apps recientes en el panel. Las registra el propio `htaw` cada vez que abre una app, como ya
+  hace con las de modo desarrollo (`recent-dev.json`), así que salen también las abiertas con doble clic o desde la
+  línea de comandos, no solo desde el panel. Lista aparte (`recent.json`, las 10 últimas): nombre e icono del
+  manifiesto, ruta y fecha; Abrir y Quitar; las que ya no existen se marcan. Los ejecutables portables no se anotan:
+  no pasan por htaw.)*
 - `htaw.exe` es una aplicación gráfica (`WinExe`): los comandos de consola (`--help`, `pack`…) escriben en la
   consola desde la que se lanzaron (`AttachConsole`) o en la salida redirigida si la hay.
 - Códigos de salida: 0 bien; 1 error (formato, argumentos, E/S); 2 el usuario rechazó los permisos.
@@ -67,7 +71,7 @@ Por usuario, sin permisos de administrador.
 | SO | Mecanismo | Estado |
 |---|---|---|
 | Windows | `HKCU\Software\Classes\.htaw` → ProgID `htaW.App` con `shell\open\command` = `"<ruta>\htaw.exe" "%1" %*` e icono del ejecutable; aviso al shell con `SHChangeNotify` | hecho (`FileAssociation.cs`) |
-| Linux | `~/.local/share/applications/htaw.desktop` + tipo MIME en `~/.local/share/mime/packages/htaw.xml` | pendiente |
+| Linux | `~/.local/share/applications/htaw.desktop` + tipo MIME en `~/.local/share/mime/packages/htaw.xml` | implementado |
 | macOS | bundle `.app` con `CFBundleDocumentTypes`; los archivos llegan por el delegado de la app, no por `argv` | pendiente |
 
 `--unregister` solo borra `.htaw` si sigue apuntando a htaW. Conviene registrar el ejecutable ya copiado en su
@@ -97,6 +101,30 @@ puede copiar y lanzar sin instalar nada. Implementación: `src/htaW/Bundler.cs`,
   nombre y `.exe` si la base es de Windows.
 - Pendiente: el recurso de versión sigue diciendo htaW (el Administrador de tareas muestra esa descripción); un `.exe`
   sin firmar descargado de Internet hace que Windows avise antes de ejecutarlo, como cualquier programa sin firma.
+
+### Modo portable: qué se desactiva (revisión para la versión 1.1)
+
+Regla: un portable **es la app**, no htaW. Nunca muestra el panel ni la línea de comandos de htaW, así que **no guarda
+nada cuyo único fin sea verse en el panel** ni toca la configuración de htaW. Solo guarda lo que la propia app
+necesita para funcionar. Se decide en `Program.RunEmbedded` / `HtawPackage.Embedded`; cada función nueva tiene que
+mirar esta tabla.
+
+| Función | En un portable | Estado |
+|---|---|---|
+| Línea de comandos de htaW (`--dev`, `pack`, `bundle`, `--register`, `--forget`, `--help`…) | No existe: todos los argumentos son de la app | Ya es así |
+| Panel de htaW | Nunca se abre | Ya es así |
+| Recientes de desarrollo (`recent-dev.json`) | No se anotan (un portable no tiene modo desarrollo) | Ya es así |
+| **Apps recientes** (`recent.json`, 1.1) | **No se anotan**: solo sirven para el panel | Implementado (`Security/AppRecents.cs`) |
+| Modo desarrollo: DevTools, teclas de navegador, recarga automática, avisos del manifiesto | Desactivados | Ya es así (`dev: false`) |
+| `htaw.app.relaunch()` | Relanza el `.exe` sin añadir la ruta de la app | Ya es así |
+| Asociación de `.htaw` | No la toca nunca | Ya es así |
+| Confianza (`trust.json`) | **Se mantiene**: evita volver a preguntar los permisos y tiene función de seguridad, no es solo para el panel. Se guarda con la ruta del `.exe` y el hash de la app incrustada | Ya es así. Para olvidarla hace falta un htaw instalado: `htaw --forget <portable.exe>` debe aceptar un ejecutable portable (hoy solo `.htaw`); pendiente |
+| Datos de la app (`settings.json`, almacenamiento web en `WebView2/`) | Se mantienen en `%LOCALAPPDATA%\htaW` por id de app, como una app suelta (el portable es «sin instalar», no «con los datos al lado») | Ya es así |
+| AppUserModelID (`htaW.<id>`) | Se mantiene (botón propio en la barra de tareas) | Ya es así |
+| Instancia única | Igual que una app suelta (mismo id = misma instancia, se abra suelta o portable) | Ya es así |
+| **Notificaciones** (1.1) | Funcionan. El registro de su AppUserModelID (`HKCU\Software\Classes\AppUserModelId\htaW.<id>`: nombre e icono) es necesario para que Windows muestre nombre e icono; el icono se copia a la carpeta de datos de la app | A implementar |
+| **Bandeja** (1.1) | Funciona igual | A implementar |
+| Comprobar actualizaciones de htaW (si algún día existe) | No: el portable lleva su htaw dentro | — |
 
 ### Linux y macOS (evaluación, sin implementar)
 

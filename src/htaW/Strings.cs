@@ -71,6 +71,8 @@ internal static partial class Strings
         "env" => T("Leer variables de entorno y carpetas del usuario", "Read environment variables and user folders"),
         "shell.open" => T("Abrir archivos y direcciones con otras aplicaciones", "Open files and addresses with other applications"),
         "links.auto" => T("Abrir paginas web en el navegador sin que lo pidas", "Open web pages in the browser without you asking"),
+        "notifications" => T("Mostrar notificaciones del sistema", "Show system notifications"),
+        "tray" => T("Mostrar un icono junto al reloj y seguir abierta en segundo plano", "Show an icon next to the clock and keep running in the background"),
         _ => p,
     };
     public static string PermissionExec(string list) => T($"Ejecutar estos programas: {list}", $"Run these programs: {list}");

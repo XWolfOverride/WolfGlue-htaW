@@ -77,3 +77,48 @@ Probado también: mover ventanas entre monitores con distinta escala (con la bar
 - Abrir `.htaw` con doble clic tras `--register`; HTML suelto y zip.
 - Ventana de permisos con archivo descargado; `shell.exec` permitido y denegado.
 - Publicación AOT: el binario arranca en una máquina sin .NET.
+
+## Registro de diagnóstico (solo Debug, Windows)
+
+En las compilaciones **Debug** (`dotnet run`, `run.cmd`, las pruebas) WolfGlue escribe siempre un registro, **`wolfglue-debug.log` en el
+directorio de trabajo del proceso al arrancar** (con `run.cmd`, la raíz del repositorio; está en `.gitignore`). En **Release** (lo que
+publica `publish.cmd`) no existe: las llamadas se eliminan al compilar. Implementación: `Platform/Windows/DebugLog.cs`.
+
+- Cada ejecución empieza con una línea `--- sesion <pid> <fecha>`; si el archivo pasa de 2 MB se empieza de nuevo.
+- `WOLFGLUE_DEBUG_LOG=<archivo>` cambia el archivo y `WOLFGLUE_DEBUG_LOG=0` lo desactiva (útil con `$env:` en PowerShell o `set` en `cmd`).
+- Contenido: un resumen por segundo con los contadores `contenedor-pinta` (el contenedor del webview se repinta) y `ventana-borra`, y
+  una línea `EVENTO` por cada repintado forzado bajo el webview (tamaño, DPI, barra o fondo con el efecto activo), cada tecla que llega
+  al menú de ventana indicando por qué vía (`tecla (webview)`, `tecla (ventana)` o `tecla (pagina)`) y el registro de
+  `AcceleratorKeyPressed`.
+- Para comprobar que las animaciones de la página no provocan repintados: `samples\htaw\repintado`.
+
+## Canal de control para pruebas automáticas (solo Debug, Windows)
+
+Para comprobar la interfaz con números y archivos, sin controlar el escritorio ni mirar capturas. **Solo compilaciones Debug** y solo
+si se arranca con `WOLFGLUE_DEBUG_CONTROL=1` (en Release no existe). La app abre una tubería con nombre `wolfglue-debug-<pid>` (accesible
+solo por el usuario actual) y deja su nombre en `wolfglue-debug.pipe` (directorio de trabajo). Se le mandan comandos JSON, uno por línea,
+y responde un JSON por línea (`{"ok":true,"result":…}` o `{"ok":false,"error":"…"}`). Implementación: `Platform/Windows/WinDebugControl.cs`;
+cliente: `tools/debug/wg.ps1`.
+
+```powershell
+$env:WOLFGLUE_DEBUG_CONTROL = "1"
+.\run.cmd --dev samples\htaw\fondo            # en otra consola, o en segundo plano
+.\tools\debug\wg.ps1 estado
+.\tools\debug\wg.ps1 eval "document.title"
+.\tools\debug\wg.ps1 eval "await htaw.window.setBackdrop('blurred'); return htaw.theme.backdrop;"
+.\tools\debug\wg.ps1 captura -File C:\temp\ventana.png
+.\tools\debug\wg.ps1 pixel -X 10 -Y 90 -W 100 -H 20
+```
+
+| Comando | Qué hace |
+|---|---|
+| `estado` | Vuelca en JSON el estado de la app y de cada ventana: posición, tamaño de ventana y de cliente, DPI, visible, minimizada, tema; fondo pedido y activo y si el contenedor del webview lleva `WS_CLIPCHILDREN`; barra de título (modo, alto, rectángulos del título, de los botones de ventana, de cada elemento y de cada menú, con su visibilidad, hover, menú abierto, modo teclado). Todos los rectángulos en píxeles físicos. |
+| `eval` | Ejecuta JavaScript en la página (`-Window <id>` para otra ventana; por defecto la principal). Vale una **expresión** (también con `await`) o un **bloque con `return`**. Devuelve el resultado como JSON; un error de la página vuelve como `ok:false`. `-Timeout` en ms. |
+| `captura` | Guarda el área de cliente en un PNG (`-File`; por defecto `wolfglue-debug-<pid>-<n>.png` en el directorio de trabajo). `-Mode screen` (por defecto) copia lo que se ve en pantalla (la ventana debe estar visible y sin tapar); `-Mode print` usa `PrintWindow`. |
+| `pixel` | Color medio de una zona del área de cliente (`-X -Y -W -H`, píxeles físicos): `avg`, `first`, `distinctColors` (hasta 64) y `uniform`. Sirve para comprobar fondos, cristal o restos sin mirar la imagen. |
+
+Ejemplos de comprobaciones: que tras cambiar de barra el menú esté donde dice `estado`; que una zona bajo la barra sea `uniform`
+(sin restos de un menú anterior); que `eval "htaw.theme.backdrop"` coincida con `estado.backdrop.active`.
+
+Límites: no simula teclado ni ratón reales (para el menú de ventana, `eval` con eventos sintéticos o `htaw.window.menu`), ni
+cambios de DPI entre monitores.

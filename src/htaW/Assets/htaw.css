@@ -40,6 +40,27 @@
   }
 }
 
+
+/* Fondo del sistema (window.backdrop): con el efecto activo el material se ve detras de la pagina. WolfGlue pone la clase
+   glue-backdrop-tinted / -blurred en <html> solo mientras esta activo; sin ella, todo vuelve a los colores solidos. */
+html.glue-backdrop-tinted, html.glue-backdrop-blurred {
+  --htaw-bg: transparent;
+  --htaw-surface: rgba(255, 255, 255, 0.55);
+  --htaw-control-bg: rgba(255, 255, 255, 0.6);
+  --htaw-control-hover: rgba(255, 255, 255, 0.7);
+  --htaw-control-active: rgba(255, 255, 255, 0.45);
+  --htaw-border: rgba(0, 0, 0, 0.1);
+}
+ (prefers-color-scheme: dark) {
+  html.glue-backdrop-tinted, html.glue-backdrop-blurred {
+    --htaw-surface: rgba(255, 255, 255, 0.06);
+    --htaw-control-bg: rgba(255, 255, 255, 0.08);
+    --htaw-control-hover: rgba(255, 255, 255, 0.12);
+    --htaw-control-active: rgba(255, 255, 255, 0.05);
+    --htaw-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
 html[data-os="macos"] { --htaw-font: -apple-system, system-ui, sans-serif; --htaw-font-size: 13px; --htaw-radius: 6px; }
 html[data-os="linux"] { --htaw-font: system-ui, sans-serif; --htaw-radius: 6px; }
 

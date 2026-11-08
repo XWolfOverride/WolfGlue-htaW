@@ -1,0 +1,7 @@
+{
+  "id": "wolfglue.ejemplo.menus",
+  "name": "Menus contextuales",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": { "width": 560, "height": 400, "minWidth": 420, "minHeight": 300 }
+}

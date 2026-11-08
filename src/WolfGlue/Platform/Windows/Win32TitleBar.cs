@@ -11,7 +11,7 @@ internal static unsafe partial class Win32
         WM_CAPTURECHANGED = 0x0215, WM_NCMOUSELEAVE = 0x02A2, WM_MOUSELEAVE = 0x02A3, WM_USER = 0x0400;
 
     public const uint WM_GETICON = 0x007F;
-    public const int HTNOWHERE = 0, HTCLIENT = 1, HTCAPTION = 2, HTMINBUTTON = 8, HTMAXBUTTON = 9, HTTOP = 12,
+    public const int HTNOWHERE = 0, HTCLIENT = 1, HTCAPTION = 2, HTSYSMENU = 3, HTMINBUTTON = 8, HTMAXBUTTON = 9, HTTOP = 12,
         HTTOPLEFT = 13, HTTOPRIGHT = 14, HTCLOSE = 20;
 
     public const int SM_CXFRAME = 32, SM_CYFRAME = 33, SM_CXPADDEDBORDER = 92;
@@ -271,6 +271,11 @@ internal static unsafe partial class Gdip
     }
 
     public static void Dispose(nint image) { if (image != 0) GdipDisposeImage(image); }
+
+    /// <summary>HICON (con transparencia) a partir de un bitmap de GDI+; 0 si falla. El llamador lo destruye.</summary>
+    public static nint ToHIcon(nint bitmap) => GdipCreateHICONFromBitmap(bitmap, out var icon) == 0 ? icon : 0;
+
+    [LibraryImport("gdiplus.dll")] private static partial int GdipCreateHICONFromBitmap(nint bitmap, out nint icon);
 
     /// <summary>Pixeles BGRA (alfa sin premultiplicar) de arriba abajo, con filas de <c>w * 4</c> bytes.</summary>
     public static (int w, int h, byte[] bgra) Pixels(nint image)

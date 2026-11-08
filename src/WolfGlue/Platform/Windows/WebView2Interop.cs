@@ -47,7 +47,9 @@ internal partial interface ICoreWebView2Controller
     void put_Bounds(RECT bounds);
     void _04(); void _05(); void _06(); void _07(); void _08();
     void MoveFocus(int reason);
-    void _10(); void _11(); void _12(); void _13(); void _14(); void _15(); void _16(); void _17();
+    void _10(); void _11(); void _12(); void _13(); void _14(); void _15();
+    long add_AcceleratorKeyPressed(ICoreWebView2AcceleratorKeyPressedEventHandler handler); // 16
+    void _17();
     void _18(); void _19(); // get/put_ParentWindow
     void NotifyParentWindowPositionChanged();
     void Close();
@@ -216,6 +218,18 @@ internal partial interface ICoreWebView2Deferral
     void Complete();
 }
 
+[GeneratedComInterface]
+[Guid("9f760f8a-fb79-42be-9990-7b956a1456c0")]
+internal partial interface ICoreWebView2AcceleratorKeyPressedEventArgs
+{
+    int get_KeyEventKind();     // 0 KEY_DOWN, 1 KEY_UP, 2 SYSTEM_KEY_DOWN, 3 SYSTEM_KEY_UP
+    uint get_VirtualKey();
+    int get_KeyEventLParam();
+    void _03();                 // get_PhysicalKeyStatus
+    [return: MarshalAs(UnmanagedType.Bool)] bool get_Handled();
+    void put_Handled([MarshalAs(UnmanagedType.Bool)] bool value);
+}
+
 // ------------------------------------------------------------------ handlers (implementados en C#)
 
 [GeneratedComInterface]
@@ -251,6 +265,23 @@ internal partial interface ICoreWebView2WebResourceRequestedEventHandler
 internal partial interface ICoreWebView2NewWindowRequestedEventHandler
 {
     [PreserveSig] int Invoke(nint sender, ICoreWebView2NewWindowRequestedEventArgs args);
+}
+
+[GeneratedComInterface]
+[Guid("b29c7e28-fa79-41a8-8e44-65811c76dcb2")]
+internal partial interface ICoreWebView2AcceleratorKeyPressedEventHandler
+{
+    [PreserveSig] int Invoke(nint sender, ICoreWebView2AcceleratorKeyPressedEventArgs args);
+}
+
+/// <summary>Teclas que pasan por el webview antes que la pagina: <paramref name="cb"/>(tipo, tecla virtual, lParam) devuelve true si las gestiona el host.</summary>
+[GeneratedComClass]
+internal sealed partial class AcceleratorKeyHandler(Func<int, uint, int, bool> cb) : ICoreWebView2AcceleratorKeyPressedEventHandler
+{
+    public int Invoke(nint sender, ICoreWebView2AcceleratorKeyPressedEventArgs args)
+    {
+        return Safe.Run(() => { if (cb(args.get_KeyEventKind(), args.get_VirtualKey(), args.get_KeyEventLParam())) args.put_Handled(true); });
+    }
 }
 
 [GeneratedComInterface]

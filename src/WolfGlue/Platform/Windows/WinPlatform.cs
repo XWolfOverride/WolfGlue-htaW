@@ -30,9 +30,11 @@ internal sealed unsafe class WinPlatform : IPlatform
     internal nint HInstance { get; private set; }
     internal bool DarkMode { get; private set; }
     internal nint MessageWindow => _messageWindow;
+    internal GlueApp App => _app;
 
     private WinServices? _services;
-    public IPlatformServices Services => _services ??= new WinServices(this);
+    public IPlatformServices Services => ServicesImpl;
+    internal WinServices ServicesImpl => _services ??= new WinServices(this);
 
     public bool IsUiThread => Win32.GetCurrentThreadId() == _uiThread;
 
@@ -47,6 +49,7 @@ internal sealed unsafe class WinPlatform : IPlatform
 
         Win32.SetProcessDpiAwarenessContext(Win32.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         DarkMode = ReadDarkMode();
+        WinDarkMenus.Apply(DarkMode);
         HInstance = Win32.GetModuleHandleW(null);
         RegisterClasses();
 
@@ -54,6 +57,9 @@ internal sealed unsafe class WinPlatform : IPlatform
         if (_messageWindow == 0) throw new InvalidOperationException("No se pudo crear la ventana de mensajes.");
 
         CreateEnvironment();
+#if DEBUG
+        WinDebugControl.Start(this, app);
+#endif
     }
 
     private void RegisterClasses()
@@ -171,6 +177,10 @@ internal sealed unsafe class WinPlatform : IPlatform
             }
             return 0;
         }
+        if (Instance is { } t)
+        {
+            if (msg == WinTray.WM_TRAY) { t._services?.Tray.OnMessage(lParam); return 0; }
+        }
         return Win32.DefWindowProcW(hwnd, msg, wParam, lParam);
     }
 
@@ -186,7 +196,9 @@ internal sealed unsafe class WinPlatform : IPlatform
     internal void RefreshTheme()
     {
         DarkMode = ReadDarkMode();
+        WinDarkMenus.Apply(DarkMode);
         _app.Native.Theme.Refresh();
+        _services?.Tray.Refresh();
     }
 
     internal static bool ReadDarkMode()

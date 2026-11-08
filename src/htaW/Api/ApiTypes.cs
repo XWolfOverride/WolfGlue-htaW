@@ -146,6 +146,7 @@ public sealed class InitApp
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string? Version { get; set; }
+    public string? Author { get; set; }
     public string[] Args { get; set; } = [];
     public string? Dir { get; set; }
     public string File { get; set; } = "";
@@ -181,4 +182,8 @@ public sealed class InitEnv
 [JsonSerializable(typeof(JsonElement?))]
 [JsonSerializable(typeof(WindowOpen))]
 [JsonSerializable(typeof(HtawInit))]
+[JsonSerializable(typeof(GlueNotification))]
+[JsonSerializable(typeof(GlueTrayRequest))]
+[JsonSerializable(typeof(GlueMenuPopupArgs))]
+[JsonSerializable(typeof(GlueTrayUpdateArgs))]
 internal partial class ApiJson : JsonSerializerContext;

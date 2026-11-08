@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Bandeja</title>
+</head>
+<body>
+<main class="layout-fill column" style="padding:16px;gap:12px">
+  <h1>Bandeja del sistema</h1>
+  <p class="muted">Cierra la ventana: se oculta y la app sigue en la bandeja. Clic izquierdo en el icono = abrir; clic derecho = menu.</p>
+  <div class="row">
+    <button id="colorBtn">Alternar icono monocromo / color</button>
+    <button id="removeBtn">Quitar el icono</button>
+    <button id="setBtn">Poner el icono</button>
+    <button id="hideBtn">Ocultar ventana (3 s)</button>
+  </div>
+  <pre id="log" style="flex:1;overflow:auto"></pre>
+</main>
+<script>
+const log = (t) => { const l = document.getElementById("log"); l.textContent = new Date().toLocaleTimeString() + "  " + t + "\n" + l.textContent; };
+let color = false, paused = false;
+const menu = () => [
+  { id: "abrir", text: "Abrir", default: true },
+  { type: "separator" },
+  { id: "pausa", text: "Pausar", checked: paused },
+  { id: "aviso", text: "Mostrar un aviso" },
+  { type: "separator" },
+  { id: "salir", text: "Salir" },
+];
+// Sin "icon", se usa el de la app (a color). Para una silueta que siga el tema, pasa un PNG con transparencia.
+const setTray = () => htaw.tray.set({ tooltip: "Ejemplo de bandeja", color, icon: "icono.png", menu: menu() }).then(
+  () => log("icono puesto (color=" + color + ")"), (e) => log("error: " + e.message));
+htaw.tray.on("click", async (id) => {
+  log("menu: " + id);
+  if (id === "abrir") await htaw.window.show();
+  else if (id === "pausa") { paused = !paused; await htaw.tray.update("pausa", { checked: paused, text: paused ? "Reanudar" : "Pausar" }); }
+  else if (id === "aviso") htaw.notify({ title: "Desde la bandeja", body: "Hola", buttons: [{ id: "ver", text: "Ver ventana" }] });
+  else if (id === "salir") htaw.app.quit();
+});
+htaw.notify.on("button", (id, b) => { if (b === "ver") htaw.window.show(); });
+htaw.notify.on("click", () => htaw.window.show());
+document.getElementById("colorBtn").onclick = () => { color = !color; setTray(); };
+document.getElementById("removeBtn").onclick = () => htaw.tray.remove().then(() => log("icono quitado (cerrar ya cierra la app)"));
+document.getElementById("setBtn").onclick = setTray;
+document.getElementById("hideBtn").onclick = async () => { await htaw.window.hide(); setTimeout(() => htaw.window.show(), 3000); };
+setTray();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "id": "wolfglue.ejemplo.acerca",
+  "name": "Acerca de y ciclo de vida",
+  "version": "1.0.0",
+  "author": "Autor de ejemplo",
+  "entry": "index.html",
+  "window": {
+    "width": 600, "height": 360,
+    "menu": [
+      { "text": "&Archivo", "items": [ { "id": "salir", "text": "&Salir" } ] },
+      { "text": "A&yuda", "items": [ { "role": "about", "text": "&Acerca de..." } ] }
+    ]
+  }
+}

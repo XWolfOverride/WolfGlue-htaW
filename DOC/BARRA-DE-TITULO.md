@@ -72,6 +72,8 @@ registro 1, el que usa GDI).
 - Colocación: título a la izquierda si cabe; en `compact`/`labels` los elementos tras el título, búsqueda al final y
   espacios repartiendo el sobrante; con un elemento centrado, centrado en la ventana (un panel centrado se encoge hasta
   120). Lo que no cabe no se muestra.
+- **Icono de la ventana**: la zona del icono devuelve `HTSYSMENU`, así que Windows hace lo de siempre: clic = menú del sistema, doble
+  clic = cerrar la ventana.
 
 ## macOS y Linux (previsto)
 

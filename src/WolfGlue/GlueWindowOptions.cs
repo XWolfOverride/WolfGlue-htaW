@@ -76,4 +76,16 @@ public sealed class GlueWindowOptions
     /// Por defecto, si.
     /// </summary>
     public bool TitleBarFromPage { get; set; } = true;
+
+    /// <summary>Fondo del sistema de esta ventana; null = el de la pagina o el de la app (<see cref="GlueAppOptions.Backdrop"/>).</summary>
+    public GlueBackdrop? Backdrop { get; set; }
+
+    /// <summary>Esta ventana es la «Acerca de» de la app: <see cref="GlueApp.ShowAboutBox"/> la trae al frente en lugar de abrir otra.</summary>
+    public bool IsAbout { get; set; }
+
+    /// <summary>
+    /// Menu de ventana (Archivo, Editar...): menus de primer nivel con sus opciones. Render propio, dentro de la barra de
+    /// titulo (DOC/MENUS.md). Se puede cambiar despues con <see cref="GlueWindow.SetMenu"/>.
+    /// </summary>
+    public List<Native.GlueMenuItem>? Menu { get; set; }
 }

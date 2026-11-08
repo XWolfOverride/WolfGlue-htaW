@@ -291,6 +291,17 @@ public sealed class GlueBridge
 [JsonSerializable(typeof(WolfGlue.Native.MessageResult))]
 [JsonSerializable(typeof(WolfGlue.Native.ScreenInfo[]))]
 [JsonSerializable(typeof(WolfGlue.Native.ThemeInfo))]
+[JsonSerializable(typeof(WolfGlue.Native.GlueNotification))]
+[JsonSerializable(typeof(BackdropEvent))]
+[JsonSerializable(typeof(WolfGlue.Native.NotificationEvent))]
+[JsonSerializable(typeof(WolfGlue.Native.GlueTrayRequest))]
+[JsonSerializable(typeof(WolfGlue.Native.GlueMenuPopupArgs))]
+[JsonSerializable(typeof(List<WolfGlue.Native.GlueMenuItem>))]
+[JsonSerializable(typeof(WolfGlue.Native.WindowMenuEvent))]
+[JsonSerializable(typeof(WolfGlue.Native.MenuStateEvent))]
+[JsonSerializable(typeof(WolfGlue.Native.MenuKeyArgs))]
+[JsonSerializable(typeof(WolfGlue.Native.GlueTrayUpdateArgs))]
+[JsonSerializable(typeof(WolfGlue.Native.TrayEvent))]
 internal partial class BridgeJsonContext : JsonSerializerContext;
 
 /// <summary>Parametros de <c>glue.window.open</c>.</summary>
@@ -304,6 +315,10 @@ internal sealed class WindowOpenArgs
     public bool Resizable { get; set; } = true;
     /// <summary>Barra de titulo: objeto = esa barra; false = ninguna (ni la de la pagina); ausente = la que declare la pagina.</summary>
     public System.Text.Json.JsonElement? Titlebar { get; set; }
+    /// <summary>solid | tinted | blurred; ausente = el de la pagina o la app.</summary>
+    public string? Backdrop { get; set; }
+    /// <summary>Menu de ventana (lista de menus con sus opciones); ausente = el de la pagina o ninguno.</summary>
+    public System.Text.Json.JsonElement? Menu { get; set; }
 }
 
 /// <summary>Datos de una ventana que se envian a la web.</summary>

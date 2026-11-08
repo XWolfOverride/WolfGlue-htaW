@@ -132,6 +132,8 @@ htaw.window.open("help.html", { titlebar: { mode: "title", items: [
 htaw.window.open("about.html", { titlebar: false });
 ```
 
+**Window icon**: with a custom bar, a click on the icon shows the system menu and a **double click closes the window**, as Windows has always done.
+
 ## Errors
 
 A badly defined bar (a missing required field, an unknown type or icon, two centred items…) in `htaw.json` or in an
@@ -140,3 +142,37 @@ HTML file's manifest prevents the app from opening, with a message saying what i
 badly defined bar is ignored and the window uses the normal bar.
 
 Full example: `samples/htaw/barra` (`htaw samples/htaw/barra` opens it in development mode).
+
+## Window menu
+
+A window menu (File, Edit, View, Help…) that htaW places according to the system: on Windows, **inside the title bar**
+(own rendering, light or dark following the theme); on macOS, in the global menu bar; on Linux, to be defined. The app
+only declares the menu, not where it is shown. **No permission.**
+
+```json
+{ "window": { "menu": [
+  { "text": "&File", "items": [
+    { "id": "open", "text": "&Open…", "shortcut": "Ctrl+O" },
+    { "type": "separator" },
+    { "id": "quit", "text": "&Quit" }
+  ] },
+  { "text": "&Edit", "items": [ { "id": "copy", "text": "&Copy", "shortcut": "Ctrl+C" } ] }
+] } }
+```
+
+```js
+htaw.window.menu.on("click", (id) => { if (id === "quit") htaw.app.quit(); });
+await htaw.window.menu.set(null);     // remove it; menu.set([...]) changes it on the fly
+```
+
+- Each top-level entry is a menu with `text` and `items`. The options are those of [`htaw.menu`](04-api.md#htawmenu--context-menus)
+  (`id`, `text`, `enabled`, `checked`, `shortcut`, submenus up to 4 levels and separators). `&` marks the access key.
+- It can be declared in the manifest (`window.menu`), in each page's `htaw+json` block, in `htaw.window.open(page, { menu })`
+  or on the fly with `htaw.window.menu.set`. An invalid menu fails with `InvalidArgument` (or a manifest error).
+- **Where it goes on Windows:** without a custom bar, with `title` and with `compact`, in a thin row below the bar (the bar's
+  icons stay where they always are); with `labels`, in the top row: menus on the left and icon + title centered, with the
+  labeled icons below.
+- **Keyboard and mouse**: a lone Alt or F10 activates the bar (arrows, Enter, Esc); Alt+letter opens the menu with that access key
+  (the `&` in the text: `"&File"` -> Alt+F, underlined when Alt is pressed). With a menu open, hovering another one or using the
+  left and right arrows switches menus. If the menus do not fit in a narrow window, a "···" button appears that opens a menu with
+  the leftovers. Keys work with focus in the page (not when focus is in a search field of the bar). `shortcut` is display only: your page handles the keys.

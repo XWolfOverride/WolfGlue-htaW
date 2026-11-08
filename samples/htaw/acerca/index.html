@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Acerca de y ciclo de vida</title>
+</head>
+<body>
+<main class="layout-fill column" style="padding:16px;gap:12px">
+  <h1>Acerca de y ciclo de vida</h1>
+  <p class="muted">Menu Ayuda > Acerca de (papel "about"), o el boton. Sin "about" en el manifiesto sale la ventana generica con icono de htaW,
+    nombre, version, autor y "Desarrollado con htaW". Prueba tambien a cerrar esta ventana con otras abiertas: se cierra todo
+    (lifecycle "main", por defecto).</p>
+  <div class="row">
+    <button id="about" class="primary">htaw.app.showAboutBox()</button>
+    <button id="hija">Abrir otra ventana</button>
+  </div>
+</main>
+<script>
+document.getElementById("about").onclick = () => htaw.app.showAboutBox();
+document.getElementById("hija").onclick = () => htaw.window.open("hija.html", { width: 320, height: 180 });
+htaw.window.menu.on("click", (id) => { if (id === "salir") htaw.app.quit(); });
+</script>
+</body>
+</html>

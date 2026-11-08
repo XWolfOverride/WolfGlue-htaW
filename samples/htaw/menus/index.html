@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Menus contextuales</title>
+</head>
+<body>
+<main class="layout-fill column" style="padding:16px;gap:12px">
+  <h1>Menus contextuales nativos</h1>
+  <p class="muted">Clic derecho en la tarjeta. El boton abre el menu justo debajo de si mismo.</p>
+  <div class="card" id="zona" style="padding:32px">Clic derecho aqui (con submenu, marcas, opciones desactivadas y atajos).</div>
+  <div class="row"><button id="boton">Abrir menu aqui</button></div>
+  <pre id="log" style="flex:1;overflow:auto"></pre>
+</main>
+<script>
+const log = (t) => { const l = document.getElementById("log"); l.textContent = new Date().toLocaleTimeString() + "  " + t + "\n" + l.textContent; };
+let negrita = false, tema = "auto";
+const items = () => [
+  { id: "copiar", text: "Copiar", shortcut: "Ctrl+C" },
+  { id: "pegar", text: "Pegar", shortcut: "Ctrl+V", enabled: false },
+  { type: "separator" },
+  { id: "negrita", text: "Negrita", checked: negrita },
+  { text: "Tema", items: [
+    { id: "t-auto", text: "Automatico", checked: tema === "auto" },
+    { id: "t-claro", text: "Claro", checked: tema === "claro" },
+    { id: "t-oscuro", text: "Oscuro", checked: tema === "oscuro" },
+    { type: "separator" },
+    { text: "Mas", items: [{ id: "t-otro", text: "Otro (segundo nivel)" }] },
+  ] },
+  { type: "separator" },
+  { id: "salir", text: "Salir" },
+];
+async function abrir(pos) {
+  const id = await htaw.menu.popup(items(), pos);
+  log("elegido: " + id);
+  if (id === "negrita") negrita = !negrita;
+  else if (id?.startsWith("t-")) tema = id.slice(2);
+  else if (id === "salir") htaw.app.quit();
+}
+document.getElementById("zona").addEventListener("contextmenu", (e) => { e.preventDefault(); abrir({ x: e.clientX, y: e.clientY }); });
+document.getElementById("boton").onclick = (e) => { const r = e.target.getBoundingClientRect(); abrir({ x: r.left, y: r.bottom }); };
+</script>
+</body>
+</html>

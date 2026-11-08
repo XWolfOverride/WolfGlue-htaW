@@ -1,0 +1,9 @@
+{
+  "id": "wolfglue.ejemplo.bandeja",
+  "name": "Bandeja",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "window": { "width": 520, "height": 380, "minWidth": 420, "minHeight": 280 },
+  "tray": { "keepRunning": true },
+  "permissions": ["tray", "notifications"]
+}

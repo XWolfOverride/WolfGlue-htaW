@@ -1,7 +1,7 @@
 # Windows and messaging
 
 An htaW app can have several windows. They are all pages of the same app: they share the origin, `localStorage`,
-settings and permissions. The app ends when the last window closes (or with `htaw.app.quit()`).
+settings and permissions. The app ends when the main window closes (or with `htaw.app.quit()`); see [Lifecycle](#lifecycle).
 
 ## Opening a window
 
@@ -127,3 +127,28 @@ await htaw.window.close();
 
 The initial title is the manifest's `name` in the main window; otherwise, the page's `<title>` (which follows the
 document if it changes).
+
+## Lifecycle
+
+The **main window** is the first one opened. By default (`"lifecycle": "main"`), **closing it closes the app and all other windows**, as in Delphi: no forgotten window keeps the app alive. With `"lifecycle": "last"` the app lives while any window remains open (useful for apps with several independent windows).
+
+- `htaw.app.quit()` closes the app in either mode.
+- With `tray.keepRunning`, closing the main window hides it (see [`htaw.tray`](04-api.md#htawtray--permission-tray)).
+- Modal windows always close with their owner.
+
+## About
+
+An app can show its About window with `htaw.app.showAboutBox()`:
+
+- If the manifest defines `about`, that page opens in a small, non-resizable window that closes with the main one.
+- Otherwise htaW shows a **generic window**: icon (the app's or, if it has none, htaW's), name, version and author if present, and at the bottom, small and grey, "Powered by htaW". A custom page has no such footer.
+- If it is already open, it is brought to the front instead of opening another.
+
+Nothing is shown on its own: on Windows and Linux the app decides when (usually from its *Help* menu or a button). To make it a standard option, use the `about` role:
+
+```json
+{ "text": "&Help", "items": [ { "role": "about", "text": "&About…" } ] }      // in the window menu
+{ "type": "button", "role": "about" }                                          // in the title bar: a "?" icon and default text
+```
+
+Options or buttons with `role: "about"` open the About window without your page handling any event. On macOS it will be the "About" option of the application menu.

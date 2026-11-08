@@ -1,7 +1,7 @@
 # Ventanas y comunicación
 
 Una app htaW puede tener varias ventanas. Todas son páginas de la misma app: comparten origen, `localStorage`,
-ajustes y permisos. La app termina al cerrar la última ventana (o con `htaw.app.quit()`).
+ajustes y permisos. La app termina al cerrar la ventana principal (o con `htaw.app.quit()`); ver [Ciclo de vida](#ciclo-de-vida).
 
 ## Abrir una ventana
 
@@ -127,3 +127,28 @@ await htaw.window.close();
 
 El título inicial es `name` del manifiesto en la ventana principal; si no hay, el `<title>` de la página (que sigue
 al documento si cambia).
+
+## Ciclo de vida
+
+La **ventana principal** es la primera que se abre. Por defecto (`"lifecycle": "main"`), **al cerrarla se cierra la app y todas las demás ventanas**, como en Delphi: ninguna ventana olvidada mantiene viva la app. Con `"lifecycle": "last"` la app vive mientras quede alguna ventana abierta (útil para apps con varias ventanas independientes).
+
+- `htaw.app.quit()` cierra la app en cualquier modo.
+- Con `tray.keepRunning`, cerrar la principal la oculta (ver [`htaw.tray`](04-api.md#htawtray--permiso-tray)).
+- Las ventanas modales se cierran siempre con su dueña.
+
+## Acerca de
+
+Una app puede mostrar su ventana «Acerca de» con `htaw.app.showAboutBox()`:
+
+- Si el manifiesto define `about`, se abre esa página en una ventana pequeña, no redimensionable, que se cierra con la principal.
+- Si no, htaW muestra una **ventana genérica**: icono (el de la app o, si no tiene, el de htaW), nombre, versión y autor si los hay, y abajo, pequeño y en gris, «Desarrollado con htaW». La página propia no lleva ese pie.
+- Si ya está abierta, se trae al frente en lugar de abrir otra.
+
+Nada se muestra solo: en Windows y Linux la app decide cuándo (normalmente desde su menú *Ayuda* o un botón). Para que sea una opción estándar, usa el papel `about`:
+
+```json
+{ "text": "&Ayuda", "items": [ { "role": "about", "text": "&Acerca de…" } ] }      // en el menú de ventana
+{ "type": "button", "role": "about" }                                                // en la barra de título: icono «?» y texto por defecto
+```
+
+Las opciones o botones con `role: "about"` abren la ventana «Acerca de» sin que tu página tenga que atender ningún evento. En macOS será la opción «Acerca de» del menú de la aplicación.

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Avisos</title>
+</head>
+<body>
+<main class="layout-fill column" style="padding:16px;gap:12px">
+  <h1>Notificaciones</h1>
+  <div class="row">
+    <button class="primary" id="simple">Simple</button>
+    <button id="botones">Con botones</button>
+    <button id="replace">Sustituible (id fijo)</button>
+    <button id="silent">Sin sonido</button>
+    <button id="close">Retirar la sustituible</button>
+  </div>
+  <p class="muted" id="perm"></p>
+  <pre id="log" style="flex:1;overflow:auto"></pre>
+</main>
+<script>
+const log = (t) => { const l = document.getElementById("log"); l.textContent = new Date().toLocaleTimeString() + "  " + t + "\n" + l.textContent; };
+let n = 0;
+document.getElementById("simple").onclick = () => htaw.notify({ title: "Hola", body: "Notificacion simple" });
+document.getElementById("botones").onclick = () => htaw.notify({
+  title: "Con botones", body: "Pulsa la notificacion o un boton",
+  buttons: [{ id: "si", text: "Si" }, { id: "no", text: "No" }],
+});
+document.getElementById("replace").onclick = () => htaw.notify({ id: "contador", title: "Contador", body: "Van " + (++n) });
+document.getElementById("silent").onclick = () => htaw.notify({ title: "Silenciosa", body: "Sin sonido", silent: true });
+document.getElementById("close").onclick = () => htaw.notify.close("contador");
+htaw.notify.on("click", (id) => log("clic en " + id));
+htaw.notify.on("button", (id, b) => log("boton " + b + " de " + id));
+htaw.notify.permission().then((p) => (document.getElementById("perm").textContent = "Permiso del sistema: " + p));
+</script>
+</body>
+</html>

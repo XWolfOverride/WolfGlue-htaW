@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using WolfGlue.Native;
 
 namespace WolfGlue.Platform.Windows;
 
@@ -12,7 +13,7 @@ namespace WolfGlue.Platform.Windows;
 /// un control EDIT nativo (cursor, seleccion, portapapeles, metodos de entrada y accesibilidad del sistema).
 /// </summary>
 [SupportedOSPlatform("windows")]
-internal sealed unsafe class WinTitleBar : IDisposable
+internal sealed unsafe class WinTitleBar : IDisposable, WinMenu.IBarHook
 {
     private sealed class Node
     {
@@ -86,8 +87,54 @@ internal sealed unsafe class WinTitleBar : IDisposable
         _ => 40,
     };
 
+    // ------------------------------------------------------------- menu de ventana (render propio)
+    // Colocacion segun el modo (DOC/MENUS.md): title (y sin barra propia) = fila propia bajo la barra; compact = en la fila de la
+    // barra, tras el titulo; labels = fila superior (titulo + menu) y los iconos debajo.
+    private enum MenuKind { None, TopRow, Below }
+    private const int MenuRowLogical = 28, TopRowLogical = 32;
+
+    private List<GlueMenuItem>? _menuSpec;
+    private readonly List<RECT> _menuR = [];
+    private readonly List<bool> _menuVisible = [];
+    private int _menuHover = -1, _menuPress = -1, _menuOpen = -1;
+    private bool _menuKeyMode, _altPending, _showMnemonics;
+    private int _menuFocus = -1;
+    private int? _pendingSwitch;
+
+    private MenuKind Kind => _menuSpec is not { Count: > 0 } ? MenuKind.None
+        : Labels ? MenuKind.TopRow : MenuKind.Below; // title y compact: fila fina bajo la barra; labels: fila superior
+
+    public void SetMenu(IReadOnlyList<GlueMenuItem>? menu)
+    {
+        _menuSpec = menu is { Count: > 0 } ? [.. menu] : null;
+        _menuHover = _menuPress = _menuOpen = -1;
+        Invalidate();
+        NotifyMenuState();
+    }
+
+    /// <summary>Avisa a la pagina del estado del menu de ventana (puesto, foco del teclado y letras de acceso), para que reenvie Alt y las teclas.</summary>
+    internal void NotifyMenuState()
+    {
+        var sb = new System.Text.StringBuilder();
+        if (_menuSpec is not null) foreach (var m in _menuSpec) { var c = Mnemonic(m.Text); if (c != 0) sb.Append(c); }
+        _w.Host.OnMenuState(_menuSpec is not null, _menuKeyMode, sb.ToString());
+    }
+
+    /// <summary>Alto logico total (franja + fila de menus si la hay).</summary>
+    internal int LogicalTotalHeight => LogicalHeightOf(_spec) + Kind switch
+    {
+        MenuKind.Below => MenuRowLogical,
+        MenuKind.TopRow => TopRowLogical,
+        _ => 0,
+    };
+
+    private int BaseHeightPx => S(LogicalHeightOf(_spec));
+
+    /// <summary>Alto de la fila del titulo (en labels con menu es la fila superior; en el resto, la franja de la barra).</summary>
+    private int TitleRowH => Kind == MenuKind.TopRow ? S(TopRowLogical) : BaseHeightPx;
+
     /// <summary>Alto de la franja en pixeles fisicos.</summary>
-    public int HeightPx => S(LogicalHeightOf(_spec));
+    public int HeightPx => S(LogicalTotalHeight);
 
     private bool Labels => _spec.Mode == GlueTitleBar.ModeLabels;
     private bool TitleMode => _spec.Mode == GlueTitleBar.ModeTitle;
@@ -315,7 +362,7 @@ internal sealed unsafe class WinTitleBar : IDisposable
         if (_layoutWidth == width && _layoutDpi == Dpi) return;
         _layoutWidth = width;
         _layoutDpi = Dpi;
-        int barH = HeightPx;
+        int barH = BaseHeightPx;
         int capH = Labels ? S(32) : barH;
         int capW = S(46);
 
@@ -345,6 +392,7 @@ internal sealed unsafe class WinTitleBar : IDisposable
 
         if (TitleMode) LayoutTitleMode(hdc, top, right, barH);
         else LayoutToolbar(hdc, top, right - S(8), barH);
+        LayoutMenus(hdc, width, right, barH);
         UpdateSearch();
         RebuildTooltips();
     }
@@ -395,7 +443,8 @@ internal sealed unsafe class WinTitleBar : IDisposable
         }
 
         int x = S(12);
-        LayoutTitle(hdc, x, limit - x - fixedW - S(16), barH);
+        if (Kind == MenuKind.TopRow) _titleR = default; // en labels con menu, el titulo va en la fila superior
+        else LayoutTitle(hdc, x, limit - x - fixedW - S(16), barH);
         if (_titleR.Right > 0) x = _titleR.Right + S(16);
         int start = x;
 
@@ -432,6 +481,92 @@ internal sealed unsafe class WinTitleBar : IDisposable
             int cx = Math.Clamp((_layoutWidth - cw) / 2, leftEnd, Math.Max(leftEnd, r - cw + gap));
             Place(center, cx, cw, barH, leftEnd, r + gap);
         }
+    }
+
+    /// <summary>Menus fuera de la fila de elementos: fila propia bajo la barra (title) o fila superior (labels, desplazando los iconos).</summary>
+    private void LayoutMenus(nint hdc, int width, int right, int barH)
+    {
+        _menuR.Clear();
+        _menuVisible.Clear();
+        switch (Kind)
+        {
+            case MenuKind.Below:
+                PlaceMenus(hdc, S(8), barH, S(MenuRowLogical), width - S(8));
+                break;
+            case MenuKind.TopRow:
+            {
+                int dy = S(TopRowLogical);
+                foreach (var n in _nodes) { n.R = Shift(n.R, dy); n.Arrow = Shift(n.Arrow, dy); }
+                // Menus a la izquierda; icono + titulo centrados en la ventana (sin pisar los menus ni los botones de ventana).
+                LayoutTitle(hdc, 0, S(240), dy);
+                int tw = _titleR.Right - _titleR.Left;
+                int center = (width - tw) / 2;
+                int menusLimit = tw > 0 ? Math.Max(S(12) + S(60), center - S(16)) : right - S(8);
+                int end = PlaceMenus(hdc, S(12), 0, dy, menusLimit);
+                if (tw > 0)
+                {
+                    int tx = Math.Clamp(center, end + S(16), Math.Max(end + S(16), right - S(8) - tw));
+                    _titleR = new RECT { Left = tx, Top = 0, Right = tx + tw, Bottom = dy };
+                }
+                break;
+            }
+        }
+    }
+
+    private static RECT Shift(RECT r, int dy) => r.Right > r.Left ? new RECT { Left = r.Left, Top = r.Top + dy, Right = r.Right, Bottom = r.Bottom + dy } : r;
+
+    /// <summary>
+    /// Cuantos menus caben en <paramref name="available"/> pixeles: todos si caben; si no, los que quepan dejando sitio para el boton
+    /// de desbordamiento (<paramref name="dotsW"/>), que reune los demas.
+    /// </summary>
+    internal static int FitCount(IReadOnlyList<int> widths, int gap, int dotsW, int available)
+    {
+        int total = widths.Sum() + gap * Math.Max(0, widths.Count - 1);
+        if (total <= available) return widths.Count;
+        int fit = 0, used = 0;
+        while (fit < widths.Count && used + widths[fit] + gap + dotsW <= available) { used += widths[fit] + gap; fit++; }
+        return fit;
+    }
+
+    /// <summary>Coloca los menus de izquierda a derecha desde <paramref name="x"/>; devuelve donde acaba el ultimo visible.</summary>
+    private int PlaceMenus(nint hdc, int x, int rowTop, int rowH, int limit)
+    {
+        if (_menuSpec is null) return x;
+        _menuR.Clear();
+        _menuVisible.Clear();
+        int h = Math.Min(S(MenuRowLogical), rowH - S(4));
+        int top = rowTop + (rowH - h) / 2;
+        int gap = S(2), dotsW = S(32);
+        var widths = _menuSpec.Select(m => Measure(hdc, Plain(m.Text), Font(12)) + S(20)).ToList();
+        int fit = FitCount(widths, gap, dotsW, limit - x);
+        int cx = x;
+        for (int i = 0; i < widths.Count; i++)
+        {
+            bool visible = i < fit;
+            _menuR.Add(visible ? new RECT { Left = cx, Top = top, Right = cx + widths[i], Bottom = top + h } : default);
+            _menuVisible.Add(visible);
+            if (visible) cx += widths[i] + gap;
+        }
+        if (fit < widths.Count)
+        {
+            // Boton «···»: abre un menu contextual con los menus que no caben.
+            _menuR.Add(new RECT { Left = cx, Top = top, Right = cx + dotsW, Bottom = top + h });
+            _menuVisible.Add(true);
+            return cx + dotsW;
+        }
+        return fit == 0 ? x : cx - gap;
+    }
+
+    /// <summary>Texto sin marcas de acceso: un ampersand desaparece y dos son uno literal.</summary>
+    internal static string Plain(string text)
+    {
+        var sb = new System.Text.StringBuilder(text.Length);
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] == (char)38) { if (i + 1 < text.Length && text[i + 1] == (char)38) { sb.Append((char)38); i++; } continue; }
+            sb.Append(text[i]);
+        }
+        return sb.ToString();
     }
 
     private static RECT Box(int x, int w, int h, int barH)
@@ -524,10 +659,27 @@ internal sealed unsafe class WinTitleBar : IDisposable
             if (_w.IconSmall != 0)
             {
                 int sz = S(16);
-                Win32.DrawIconEx(hdc, x, (barH - sz) / 2, _w.IconSmall, sz, sz, 0, 0, Win32.DI_NORMAL);
+                Win32.DrawIconEx(hdc, x, (TitleRowH - sz) / 2, _w.IconSmall, sz, sz, 0, 0, Win32.DI_NORMAL);
                 x += sz + S(8);
             }
-            DrawText(hdc, _w.TitleText, new RECT { Left = x, Top = 0, Right = _titleR.Right, Bottom = barH }, Font(12), text, Win32.DT_LEFT);
+            DrawText(hdc, _w.TitleText, new RECT { Left = x, Top = 0, Right = _titleR.Right, Bottom = TitleRowH }, Font(12), text, Win32.DT_LEFT);
+        }
+
+        for (int i = 0; i < _menuR.Count; i++)
+        {
+            if (!_menuVisible[i]) continue;
+            bool open = i == _menuOpen, down = i == _menuPress && i == _menuHover;
+            if (open || down) Round(hdc, _menuR[i], Pressed, null);
+            else if (i == _menuHover || (_menuKeyMode && _menuOpen < 0 && i == _menuFocus)) Round(hdc, _menuR[i], Hover, null);
+            // El texto se dibuja con prefijos (el ampersand marca la tecla de acceso, que se subraya solo con Alt o en modo teclado).
+            bool overflow = i >= _menuSpec!.Count;
+            string raw = overflow ? "···" : _menuSpec[i].Text;
+            var rr = _menuR[i];
+            var oldFont = Win32.SelectObject(hdc, Font(12));
+            Win32.SetTextColor(hdc, Ref(text));
+            uint flags = Win32.DT_CENTER | Win32.DT_SINGLELINE | Win32.DT_VCENTER | (overflow ? Win32.DT_NOPREFIX : (_showMnemonics || _menuKeyMode) ? 0u : 0x00100000u /* DT_HIDEPREFIX */);
+            Win32.DrawTextW(hdc, raw, raw.Length, ref rr, flags);
+            Win32.SelectObject(hdc, oldFont);
         }
 
         foreach (var n in _nodes)
@@ -708,6 +860,9 @@ internal sealed unsafe class WinTitleBar : IDisposable
                 return Win32.HTTOP;
             }
         }
+        if (MenuAt(x, y) >= 0) return Win32.HTCLIENT;
+        // Icono de la ventana: como el menu del sistema de toda la vida (clic = menu del sistema, doble clic = cerrar).
+        if (OnIcon(x, y)) return Win32.HTSYSMENU;
         if (In(_maxR, x, y)) return Win32.HTMAXBUTTON;
         if (In(_minR, x, y) || In(_closeR, x, y)) return Win32.HTCLIENT;
         return NodeAt(x, y, out _) is not null ? Win32.HTCLIENT : Win32.HTCAPTION;
@@ -745,6 +900,19 @@ internal sealed unsafe class WinTitleBar : IDisposable
         return null;
     }
 
+    private bool OnIcon(int x, int y)
+    {
+        if (_w.IconSmall == 0 || _titleR.Right <= _titleR.Left) return false;
+        var r = new RECT { Left = Math.Max(0, _titleR.Left - S(8)), Top = 0, Right = _titleR.Left + S(16) + S(4), Bottom = TitleRowH };
+        return In(r, x, y);
+    }
+
+    private int MenuAt(int x, int y)
+    {
+        for (int i = 0; i < _menuR.Count; i++) if (_menuVisible[i] && In(_menuR[i], x, y)) return i;
+        return -1;
+    }
+
     private Cap CapAt(int x, int y) =>
         In(_closeR, x, y) ? Cap.Close : In(_maxR, x, y) ? Cap.Max : In(_minR, x, y) ? Cap.Min : Cap.None;
 
@@ -754,6 +922,8 @@ internal sealed unsafe class WinTitleBar : IDisposable
         int zone = ZoneBody;
         var node = y < HeightPx ? NodeAt(x, y, out zone) : null;
         if (node?.Item.Type == GlueTitleBarItem.Search) node = null;
+        int mh = y < HeightPx ? MenuAt(x, y) : -1;
+        if (mh != _menuHover) { _menuHover = mh; RepaintStrip(); }
         var cap = y < HeightPx ? CapAt(x, y) : Cap.None;
         if (cap == Cap.Max) cap = Cap.None; // el de maximizar llega como no cliente
         SetHover(node, zone, cap);
@@ -767,6 +937,7 @@ internal sealed unsafe class WinTitleBar : IDisposable
     public void OnMouseLeave()
     {
         _tracking = false;
+        if (_menuHover >= 0) { _menuHover = -1; RepaintStrip(); }
         if (_hoverCap != Cap.Max) SetHover(null, ZoneBody, Cap.None);
     }
 
@@ -804,6 +975,15 @@ internal sealed unsafe class WinTitleBar : IDisposable
     {
         if (y >= HeightPx) return false;
         EnsureLayoutForInput();
+        int mi = MenuAt(x, y);
+        if (mi >= 0)
+        {
+            ExitKeyMode();
+            _menuPress = mi;
+            Win32.SetCapture(_w.Hwnd);
+            RepaintStrip();
+            return true;
+        }
         var node = NodeAt(x, y, out var zone);
         var cap = CapAt(x, y);
         if (node is null && cap == Cap.None) return false;
@@ -819,6 +999,15 @@ internal sealed unsafe class WinTitleBar : IDisposable
 
     public bool OnLButtonUp(int x, int y)
     {
+        if (_menuPress >= 0)
+        {
+            int pressed = _menuPress;
+            _menuPress = -1;
+            if (Win32.GetCapture() == _w.Hwnd) Win32.ReleaseCapture();
+            RepaintStrip();
+            if (MenuAt(x, y) == pressed) OpenMenu(pressed);
+            return true;
+        }
         if (_press is null && _pressCap == Cap.None) return false;
         var press = _press;
         int pressZone = _pressZone;
@@ -849,10 +1038,229 @@ internal sealed unsafe class WinTitleBar : IDisposable
 
     public void OnCaptureLost()
     {
+        if (_menuPress >= 0) { _menuPress = -1; RepaintStrip(); }
         if (_press is null && _pressCap == Cap.None) return;
         _press = null;
         _pressCap = Cap.None;
         RepaintStrip();
+    }
+
+    /// <summary>
+    /// Abre el menu <paramref name="i"/> bajo su entrada (la entrada la pinta la barra; el desplegable es el menu nativo del sistema).
+    /// Mientras esta abierto, el raton sobre otra entrada o las flechas izquierda/derecha cambian de menu (<see cref="WinMenu.IBarHook"/>).
+    /// </summary>
+    private void OpenMenu(int i, bool byKey = false)
+    {
+        while (true)
+        {
+            if (_menuSpec is null || i < 0 || i >= _menuR.Count) break;
+            // El ultimo boton, si hay desbordamiento, reune los menus que no caben (cada uno como submenu).
+            IReadOnlyList<GlueMenuItem>? items = i < _menuSpec.Count
+                ? _menuSpec[i].Items
+                : [.. _menuSpec.Where((_, k) => k < _menuVisible.Count && !_menuVisible[k])];
+            if (items is not { Count: > 0 }) break;
+            _menuOpen = i;
+            _menuFocus = i; // el foco del teclado sigue al menu abierto (si no, quedaba sombreada la entrada de antes)
+            _pendingSwitch = null;
+            RepaintStrip();
+            var p = new Win32.POINT { X = _menuR[i].Left, Y = _menuR[i].Bottom };
+            Win32.ClientToScreen(_w.Hwnd, ref p);
+            string? id = WinMenu.PopupAt(_w.Hwnd, p, items, this);
+            _menuOpen = -1;
+            RepaintStrip();
+            if (_pendingSwitch is { } next) { _pendingSwitch = null; i = next; continue; }
+            if (id is not null) { ExitKeyMode(); _w.RaiseMenu(id); }
+            else if (byKey) { _menuKeyMode = true; _menuFocus = i; SetMnemonics(true); RepaintStrip(); NotifyMenuState(); } // Esc: vuelve a la barra resaltada
+            else ExitKeyMode();
+            break;
+        }
+    }
+
+    // ------------------------------------------------------------- teclado del menu de ventana
+    /// <summary>Indices de las entradas visibles (los menus que caben y, si lo hay, el boton de desbordamiento).</summary>
+    private List<int> VisibleEntries()
+    {
+        var list = new List<int>();
+        for (int i = 0; i < _menuR.Count; i++) if (_menuVisible[i]) list.Add(i);
+        return list;
+    }
+
+    /// <summary>Tecla de acceso de un texto de menu (la letra tras un solo ampersand), en mayuscula; 0 si no tiene.</summary>
+    internal static char Mnemonic(string text)
+    {
+        for (int i = 0; i < text.Length - 1; i++)
+        {
+            if (text[i] != (char)38) continue;
+            if (text[i + 1] == (char)38) { i++; continue; }
+            return char.ToUpperInvariant(text[i + 1]);
+        }
+        return (char)0;
+    }
+
+    private int MnemonicEntry(uint vk)
+    {
+        if (_menuSpec is null || !(vk is >= 0x30 and <= 0x39 or >= 0x41 and <= 0x5A)) return -1;
+        char c = (char)vk;
+        for (int i = 0; i < _menuSpec.Count && i < _menuVisible.Count; i++)
+            if (_menuVisible[i] && Mnemonic(_menuSpec[i].Text) == c) return i;
+        return -1;
+    }
+
+    private void SetMnemonics(bool on)
+    {
+        if (_showMnemonics == on) return;
+        _showMnemonics = on;
+        RepaintStrip();
+    }
+
+    private void EnterKeyMode()
+    {
+        var v = VisibleEntries();
+        if (v.Count == 0) return;
+        _menuKeyMode = true;
+        _menuFocus = v[0];
+        SetMnemonics(true);
+        RepaintStrip();
+        NotifyMenuState();
+    }
+
+    private void ExitKeyMode()
+    {
+        if (!_menuKeyMode && !_showMnemonics) return;
+        _menuKeyMode = false;
+        _menuFocus = -1;
+        _altPending = false;
+        SetMnemonics(false);
+        RepaintStrip();
+        NotifyMenuState();
+    }
+
+    /// <summary>
+    /// Teclas que pasan por el webview antes que la pagina (<c>AcceleratorKeyPressed</c>): Alt suelto o F10 activan la barra de
+    /// menus (flechas, Intro, Esc, letras de acceso), y Alt+letra abre el menu con esa tecla de acceso. Devuelve true si la tecla
+    /// es del menu y no debe llegar a la pagina. <paramref name="kind"/>: 0 tecla, 1 tecla soltada, 2 tecla de sistema (con Alt), 3 soltada.
+    /// </summary>
+    internal bool OnAccelerator(int kind, uint vk, int lParam, string source = "webview")
+    {
+        if (Kind == MenuKind.None || _menuSpec is null) return false;
+        if (DebugLog.Enabled) DebugLog.Event($"tecla ({source}) kind={kind} vk=0x{vk:X} modoTeclado={_menuKeyMode}");
+        const uint VkMenu = 0x12, VkF10 = 0x79, VkEsc = 0x1B, VkLeft = 0x25, VkUp = 0x26, VkRight = 0x27, VkDown = 0x28, VkReturn = 0x0D, VkSpace = 0x20;
+        bool down = kind is 0 or 2;
+        bool repeat = down && (lParam & 0x40000000) != 0;
+
+        if (vk == VkMenu)
+        {
+            if (down)
+            {
+                if (!repeat) { _altPending = true; SetMnemonics(true); }
+                return false;
+            }
+            // Alt soltado sin haber pulsado otra tecla entre medias: activa (o cierra) la barra de menus.
+            bool alone = _altPending;
+            _altPending = false;
+            if (alone)
+            {
+                if (_menuKeyMode) ExitKeyMode(); else EnterKeyMode();
+                return true;
+            }
+            if (!_menuKeyMode) SetMnemonics(false);
+            return false;
+        }
+        if (!down) return false;
+        _altPending = false;
+
+        if (vk == VkF10 && (Win32.GetKeyState(0x10) & 0x8000) == 0) // Mayus+F10 es el menu contextual
+        {
+            if (_menuKeyMode) ExitKeyMode(); else EnterKeyMode();
+            return true;
+        }
+
+        if (_menuKeyMode)
+        {
+            var v = VisibleEntries();
+            int at = v.IndexOf(_menuFocus);
+            switch (vk)
+            {
+                case VkLeft: _menuFocus = v[(at - 1 + v.Count) % v.Count]; RepaintStrip(); return true;
+                case VkRight: _menuFocus = v[(at + 1) % v.Count]; RepaintStrip(); return true;
+                case VkDown or VkUp or VkReturn or VkSpace:
+                {
+                    int open = _menuFocus;
+                    _w.PostUi(() => OpenMenu(open, true));
+                    return true;
+                }
+                case VkEsc: ExitKeyMode(); return true;
+            }
+            int m = MnemonicEntry(vk);
+            if (m >= 0) { _w.PostUi(() => OpenMenu(m, true)); return true; }
+            ExitKeyMode(); // cualquier otra tecla sale de la barra y sigue su camino
+            return false;
+        }
+
+        if (kind == 2) // Alt+letra
+        {
+            int m = MnemonicEntry(vk);
+            if (m >= 0) { _w.PostUi(() => OpenMenu(m, true)); return true; }
+        }
+        return false;
+    }
+
+#if DEBUG
+    /// <summary>Estado de la barra para el canal de control de depuracion: modo, alto, rectangulos (pixeles fisicos), menus y elementos.</summary>
+    internal void DebugWrite(System.Text.Json.Utf8JsonWriter w)
+    {
+        EnsureLayoutForInput();
+        static void Rect(System.Text.Json.Utf8JsonWriter w, string name, RECT r)
+        {
+            w.WriteStartObject(name); w.WriteNumber("x", r.Left); w.WriteNumber("y", r.Top); w.WriteNumber("width", r.Right - r.Left); w.WriteNumber("height", r.Bottom - r.Top); w.WriteEndObject();
+        }
+        w.WriteString("mode", _spec.Mode);
+        w.WriteString("menuKind", Kind.ToString());
+        w.WriteNumber("heightPx", HeightPx);
+        w.WriteNumber("baseHeightPx", BaseHeightPx);
+        Rect(w, "title", _titleR);
+        Rect(w, "min", _minR); Rect(w, "max", _maxR); Rect(w, "close", _closeR);
+        w.WriteBoolean("keyMode", _menuKeyMode);
+        w.WriteBoolean("showMnemonics", _showMnemonics);
+        w.WriteNumber("menuHover", _menuHover); w.WriteNumber("menuOpen", _menuOpen); w.WriteNumber("menuFocus", _menuFocus);
+        w.WriteStartArray("menus");
+        for (int i = 0; i < _menuR.Count; i++)
+        {
+            w.WriteStartObject();
+            w.WriteString("text", _menuSpec is not null && i < _menuSpec.Count ? _menuSpec[i].Text : "···");
+            w.WriteBoolean("visible", _menuVisible[i]);
+            Rect(w, "rect", _menuR[i]);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartArray("items");
+        foreach (var n in _nodes)
+        {
+            w.WriteStartObject();
+            w.WriteString("type", n.Item.Type); w.WriteString("id", n.Item.Id); w.WriteBoolean("visible", n.Visible);
+            Rect(w, "rect", n.R);
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+    }
+#endif
+
+    // -- WinMenu.IBarHook: el menu abierto avisa de lo que pasa en la barra
+    int WinMenu.IBarHook.Current => _menuOpen;
+
+    int WinMenu.IBarHook.EntryAt(Win32.POINT screen)
+    {
+        Win32.ScreenToClient(_w.Hwnd, ref screen);
+        return MenuAt(screen.X, screen.Y);
+    }
+
+    void WinMenu.IBarHook.SwitchTo(int entry, bool relative)
+    {
+        if (!relative) { _pendingSwitch = entry; return; }
+        var v = VisibleEntries();
+        int at = v.IndexOf(_menuOpen);
+        if (v.Count == 0 || at < 0) return;
+        _pendingSwitch = entry == -1 ? v[(at - 1 + v.Count) % v.Count] : v[(at + 1) % v.Count];
     }
 
     private void RunCaption(Cap cap)
